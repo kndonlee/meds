@@ -191,18 +191,18 @@ function process_messages {
     
     [[ $line =~ $chatid ]] && line="$(echo $line | awk -F\| {'print $6'} | sed -e 's/\[””]//g')"
   
-    echo "$line" | grep -qi morph   && last_morphine=$message_epoch    && morphine_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi baclo   && last_baclofen=$message_epoch    && baclofen_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi esgic   && last_esgic=$message_epoch       && esgic_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi lyrica  && last_lyrica=$message_epoch      && lyrica_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi xanax   && last_xanax=$message_epoch       && xanax_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi morph   && last_morphine=$message_epoch    && morphine_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi baclo   && last_baclofen=$message_epoch    && baclofen_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi esgic   && last_esgic=$message_epoch       && esgic_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi lyrica  && last_lyrica=$message_epoch      && lyrica_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi xanax   && last_xanax=$message_epoch       && xanax_log+="$(format_for_log $message_epoch "$line")\n"
     
-    echo "$line" | grep -qi taur    && last_taurine=$message_epoch     && taurine_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi calc    && last_calcium=$message_epoch     && calcium_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi msm     && last_msm=$message_epoch         && msm_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi iron    && last_iron=$message_epoch        && iron_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi magne   && last_magnesium=$message_epoch   && magnesium_log+="$(format_for_log $message_epoch "$line")\n"
-    echo "$line" | grep -qi nac     && last_nac=$message_epoch         && nac_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi taur    && last_taurine=$message_epoch     && taurine_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi calc    && last_calcium=$message_epoch     && calcium_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi msm     && last_msm=$message_epoch         && msm_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi iron    && last_iron=$message_epoch        && iron_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi magne   && last_magnesium=$message_epoch   && magnesium_log+="$(format_for_log $message_epoch "$line")\n"
+    echo "$line" | grep -v : | grep -qi nac     && last_nac=$message_epoch         && nac_log+="$(format_for_log $message_epoch "$line")\n"
   
   done < <(all_messages)
 }
