@@ -2,6 +2,7 @@
 
 sleep_time=20
 take_soon_time=1800
+version=1.05
 
 cd "$(dirname "$0")"
 
@@ -255,7 +256,7 @@ while true; do
   process_messages
 
   clear
-  echo -e "${BOLD}${YELLOW}Last update: $(date)${RESET}"
+  echo -e "${BOLD}${YELLOW}Last update: $(date) version:${version}${RESET}"
   echo
   out morphine_bt "$last_morphine" 4
   out morphine    "$last_morphine" 8
