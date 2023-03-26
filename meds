@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "$0")"
+
 RESET='\e[0m'       # Text Reset
 BOLD="$(tput bold)";
 
@@ -248,7 +250,7 @@ while true; do
   process_messages
 
   clear
-  echo
+  echo -e "${BOLD}${YELLOW}Last update: $(date)${RESET}"
   echo
   out morphine_bt "$last_morphine" 4
   out morphine    "$last_morphine" 8
