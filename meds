@@ -2,6 +2,8 @@
 
 cd "$(dirname "$0")"
 
+git pull
+
 RESET='\e[0m'       # Text Reset
 BOLD="$(tput bold)";
 
