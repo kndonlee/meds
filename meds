@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 sleep_time=20
+take_soon_time=1800
 
 cd "$(dirname "$0")"
 
@@ -233,7 +234,7 @@ function out {
   elif [[ $due_every_s -gt $elapsed_secs ]]; then
     due="${GREEN}wait${RESET}"
 
-    if [[ $((${due_every_s}-${elapsed_secs})) -lt 3600 ]]; then
+    if [[ $((${due_every_s}-${elapsed_secs})) -lt $take_soon_time ]]; then
       due="${BOLD}${YELLOW}TAKE_SOON${RESET}"
     fi
   else
