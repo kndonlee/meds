@@ -13,22 +13,25 @@ PURPLE='\e[0;35m'       # Purple
 CYAN='\e[0;36m'         # Cyan
 WHITE='\e[0;37m'        # White
 
-QUERY='SELECT
+[[ -f chatid ]] && chatid=$(cat chatid)
+[[ -z $chatid ]] && chatid="chat574232935236064109"
+
+QUERY="SELECT
     message.is_from_me,
     chat.chat_identifier,
-    datetime (message.date / 1000000000 + strftime ("%s", "2001-01-01"), "unixepoch", "localtime") AS message_date,
-    message.date / 1000000000 + strftime ("%s", "2001-01-01") AS message_epoch,
-    strftime ("%s", "now") AS now_epoch,
+    datetime (message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\"), \"unixepoch\", \"localtime\") AS message_date,
+    message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\") AS message_epoch,
+    strftime (\"%s\", \"now\") AS now_epoch,
     message.text
 FROM
     chat
-    JOIN chat_message_join ON chat. "ROWID" = chat_message_join.chat_id
-    JOIN message ON chat_message_join.message_id = message. "ROWID"
+    JOIN chat_message_join ON chat. \"ROWID\" = chat_message_join.chat_id
+    JOIN message ON chat_message_join.message_id = message. \"ROWID\"
 WHERE
-     chat.chat_identifier LIKE "chat574232935236064109"
+     chat.chat_identifier LIKE \"${chatid}\"
      AND (now_epoch-message_epoch) <= 86400
 ORDER BY
-    message_date ASC'
+    message_date ASC"
 
     #strftime ("%s", "now", "localtime") AS now_epoch,
      #AND (now_epoch-message_epoch) <= 86400
