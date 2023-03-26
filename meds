@@ -65,8 +65,6 @@ function all_messages {
 # .25mg Xanax
 # 7.5mg Morphine (ER)
 
-chat=chat574232935236064109
-
 : ${DEBUG:=false}
 function debug {
   $DEBUG && 
@@ -181,10 +179,10 @@ function process_messages {
     [[ $line =~ ^\s*$ ]] && continue
   
     debug "line: $line"
-    [[ $line =~ $chat ]] && crack_header "$line"
+    [[ $line =~ $chatid ]] && crack_header "$line"
     debug "epoch: $message_epoch current_epoch: $current_epoch"
     
-    [[ $line =~ $chat ]] && line="$(echo $line | awk -F\| {'print $6'} | sed -e 's/\[””]//g')"
+    [[ $line =~ $chatid ]] && line="$(echo $line | awk -F\| {'print $6'} | sed -e 's/\[””]//g')"
   
     echo "$line" | grep -qi morph   && last_morphine=$message_epoch    && morphine_log+="$(format_for_log $message_epoch "$line")\n"
     echo "$line" | grep -qi baclo   && last_baclofen=$message_epoch    && baclofen_log+="$(format_for_log $message_epoch "$line")\n"
