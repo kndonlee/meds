@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+while true; do
+  date
+  echo "connecting"
+  ssh -R8822:localhost:22 kndonlee@packrat.duckdns.org
+  sleep 5
+done
