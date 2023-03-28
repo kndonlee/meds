@@ -2,7 +2,7 @@
 
 sleep_time=20
 take_soon_time=1800
-version=1.05
+version=1.06
 
 cd "$(dirname "$0")"
 
@@ -20,6 +20,17 @@ BLUE='\e[0;34m'         # Blue
 PURPLE='\e[0;35m'       # Purple
 CYAN='\e[0;36m'         # Cyan
 WHITE='\e[0;37m'        # White
+
+# Bold Colors
+BBLACK='\e[1;30m'        # Black
+BRED='\e[1;31m'          # Red
+BGREEN='\e[1;32m'        # Green
+BYELLOW='\e[1;33m'       # Yellow
+BBLUE='\e[1;34m'         # Blue
+BPURPLE='\e[1;35m'       # Purple
+BCYAN='\e[1;36m'         # Cyan
+BWHITE='\e[1;37m'        # White
+
 
 [[ -f chatid ]] && chatid=$(cat chatid)
 [[ -z $chatid ]] && chatid="chat574232935236064109"
@@ -83,7 +94,12 @@ function readable_time {
   local epoch="$1"
   #TZ=MDT date -r "$epoch" | awk {'print $4'}  
   #echo date -r "$epoch" "+%I:%M %p"
-  date -r "$epoch" "+%I:%M %p"
+  read time meridiem < <(date -r "$epoch" "+%I:%M %p")
+
+  [[ $meridiem =~ P ]] &&
+    echo -e "$time ${PURPLE}${meridiem}${RESET}" ||
+    echo -e "$time ${YELLOW}${meridiem}${RESET}"
+
 }
 
 # 12:29:56 AM MDT
@@ -165,7 +181,12 @@ function format_for_log {
   local epoch="$1"
   local msg="$2"
 
-  echo "$(readable_time "$epoch") $(echo "$msg" | sed -e 's/ /_/g')"
+  out_time="$(readable_time "$epoch" | tr '[:upper:]' '[:lower:]' | sed -e 's/ //' -e 's/am/a/' -e 's/pm/p/')"
+  out_msg="$(echo "$msg" | sed -e 's/ /_/g')"
+
+  [[ $out_time =~ p ]] &&
+    echo -e "${PURPLE}${out_time}${RESET}${BLACK}-${RESET}${out_msg}" ||
+    echo -e "${YELLOW}${out_time}${RESET}${BLACK}-${RESET}${out_msg}"
 }
 
 #last_morphine
@@ -231,15 +252,15 @@ function out {
 
 #       7200           3600
   if [[ $due_every_s -lt $elapsed_secs ]]; then
-    due="${BOLD}${RED}TAKE${RESET}"
+    due="${BRED}TAKE${RESET}"
   elif [[ $due_every_s -gt $elapsed_secs ]]; then
-    due="${GREEN}wait${RESET}"
+    due="${BGREEN}wait${RESET}"
 
     if [[ $((${due_every_s}-${elapsed_secs})) -lt $take_soon_time ]]; then
-      due="${BOLD}${YELLOW}TAKE_SOON${RESET}"
+      due="${BYELLOW}SOON${RESET}"
     fi
   else
-    due="${BOLD}${RED}WTF_DONALD${RESET}"
+    due="${BRED}WTF_DONALD${RESET}"
   fi
 
   if [[ $elapsed_secs -gt 86400 ]]; then
@@ -248,15 +269,20 @@ function out {
     elapsed="$(printf "%02d:%02d" "${elapsed_hours#-}" "${elapsed_mins#-}")"
   fi
 
-  echo -e "$(printf "%-12s" $drug) last:${CYAN}$(readable_time "$last_taken_epoch")${RESET}   Elapsed:${CYAN}${elapsed}${RESET}  Due:$due  Every:$due_every hrs"
+  echo -e "$(printf "%-12s" $drug) last:${CYAN}$(readable_time "$last_taken_epoch")${RESET}   Elapsed:${CYAN}${elapsed}${RESET}  Due:$due  Every:${CYAN}$due_every hrs${RESET}"
 
+}
+
+function echo_blank {
+  #echo -e "${BLACK}------------------------${RESET}"
+  echo  "------------------------- "
 }
 
 while true; do
   process_messages
 
   clear
-  echo -e "${BOLD}${YELLOW}Last update: $(date) version:${version}${RESET}"
+  echo -e "${BYELLOW}Last update:${BPURPLE}$(date) ${BYELLOW}version:${BPURPLE}${version} ${BYELLOW}Host:${BPURPLE}$HOSTNAME${RESET}"
   echo
   out morphine_bt "$last_morphine" 4
   out morphine    "$last_morphine" 8
@@ -272,21 +298,59 @@ while true; do
   out magnesium   "$last_magnesium" 3
   out nac         "$last_nac"       24
 
+  col_width=60
+
   set1=$(for i in morphine baclofen esgic lyrica; do
-    eval "$(echo "echo -e \"\$${i}_log\"")"
-  done | sed -e 's/^$/- - -/')
+    eval "$(echo -n "echo -ne \"\$${i}_log\"")" | while read line; do
+      line_length=$(echo -e "$line" | wc -c)
+      spaces_to_add=$((col_width-line_length))
+
+      echo -ne "$line"
+      for i in $(seq 1 $spaces_to_add); do
+        echo -ne " "
+      done
+      echo
+    done
+    echo_blank
+  done)
 
   set2=$(for i in xanax taurine calcium msm; do
-    eval "$(echo "echo -e \"\$${i}_log\"")"
-  done | sed -e 's/^$/- - -/')
+    eval "$(echo -n "echo -ne \"\$${i}_log\"")" | while read line; do
+      line_length=$(echo -e "$line" | wc -c)
+      spaces_to_add=$((col_width-line_length))
+
+      echo -ne "$line"
+      for i in $(seq 1 $spaces_to_add); do
+        echo -ne " "
+      done
+      echo
+    done
+    echo_blank
+  done)
 
   set3=$(for i in iron magnesium nac; do
-    eval "$(echo "echo -e \"\$${i}_log\"")"
-  done | sed -e 's/^$/- - -/')
+    eval "$(echo -n "echo -ne \"\$${i}_log\"")" | while read line; do
+      line_length=$(echo -e "$line" | wc -c)
+      spaces_to_add=$((col_width-line_length))
+
+      echo -ne "$line"
+      for i in $(seq 1 $spaces_to_add); do
+        echo -ne " "
+      done
+      echo
+    done
+    echo_blank
+  done)
 
   echo
-  echo -e "${BOLD}${YELLOW}Log${RESET}"
-  paste <(echo "$set1") <(echo "$set2") <(echo "$set3")  | column -t
+  echo -e "${BYELLOW}Log${RESET}"
+  paste -d' ' <(echo -e "$set1") <(echo -e "$set2") <(echo -e "$set3")
+
+#  paste <(echo -e "$set1") <(echo -e "$set2") <(echo -e "$set3") | while read col1 col2 col3; do
+#    echo -e "$col1"
+#    echo -e "$col2"
+#    echo -e "$col3"
+#  done | xargs printf "_%-30s_   _%-30s_   _%-30s_\n"
 
 # $morphine_log
 # $baclofen_log
