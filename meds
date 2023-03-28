@@ -2,7 +2,7 @@
 
 sleep_time=20
 take_soon_time=1800
-version=1.06
+version=1.07
 
 cd "$(dirname "$0")"
 
@@ -20,6 +20,8 @@ BLUE='\e[0;34m'         # Blue
 PURPLE='\e[0;35m'       # Purple
 CYAN='\e[0;36m'         # Cyan
 WHITE='\e[0;37m'        # White
+
+BLUE_BG='\e[0;44m'       # Blue
 
 # Bold Colors
 BBLACK='\e[1;30m'        # Black
@@ -235,6 +237,8 @@ function out {
   local due_every="$3"
   local due_every_s="$(($3 * 3600))"
   local current_epoch="$current_epoch"
+  local optional="$4"
+  [[ -z $optional ]] && optional=false
 
   elapsed_secs=$((last_taken_epoch-current_epoch))
   elapsed_secs="${elapsed_secs#-}"
@@ -252,7 +256,11 @@ function out {
 
 #       7200           3600
   if [[ $due_every_s -lt $elapsed_secs ]]; then
-    due="${BRED}TAKE${RESET}"
+    if ${optional}; then
+      due="${BYELLOW}${BLUE_BG}optl${RESET}"
+    else
+      due="${BRED}TAKE${RESET}"
+    fi
   elif [[ $due_every_s -gt $elapsed_secs ]]; then
     due="${BGREEN}wait${RESET}"
 
@@ -284,18 +292,18 @@ while true; do
   clear
   echo -e "${BYELLOW}Last update:${BPURPLE}$(date) ${BYELLOW}version:${BPURPLE}${version} ${BYELLOW}Host:${BPURPLE}$HOSTNAME${RESET}"
   echo
-  out morphine_bt "$last_morphine" 4
+  out morphine_bt "$last_morphine" 4  true
   out morphine    "$last_morphine" 8
   out baclofen    "$last_baclofen" 4
-  out esgic       "$last_esgic"    4
+  out esgic       "$last_esgic"    4  true
   out lyrica      "$last_lyrica"   12
   out xanax       "$last_xanax"    12
   echo
-  out taurine     "$last_taurine"   3
+  out taurine     "$last_taurine"   3 
   out calcium     "$last_calcium"   3
   out msm         "$last_msm"       3
   out iron        "$last_iron"      3
-  out magnesium   "$last_magnesium" 3
+  out magnesium   "$last_magnesium" 6
   out nac         "$last_nac"       24
 
   col_width=60
