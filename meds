@@ -2,7 +2,7 @@
 
 sleep_time=20
 take_soon_time=1800
-version=1.09
+version=1.10
 
 cd "$(dirname "$0")"
 
@@ -288,11 +288,11 @@ function out {
 
 
 function echo_blank {
-  echo  "------------------------- "
+  echo  "-------------------------- "
 }
 
 function echo_blank2 {
-  echo  "                          "
+  echo  "                           "
 }
 
 while true; do
@@ -316,7 +316,7 @@ while true; do
   out nac         "$last_nac"       24
   out vitamind    "$last_vitamind"  24
 
-  col_width=60
+  col_width=61
 
   set1=$(for i in morphine baclofen esgic lyrica; do
     eval "$(echo -n "echo -ne \"\$${i}_log\"")" | while read line; do
