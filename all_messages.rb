@@ -19,24 +19,66 @@ else
   chat_id = "chat574232935236064109"
 end
 
+query_history = 4 * 86400
+
 db_query = "SELECT
     message.is_from_me,
     chat.chat_identifier,
     datetime (message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\"), \"unixepoch\", \"localtime\") AS message_date,
     message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\") AS message_epoch,
     strftime (\"%s\", \"now\") AS now_epoch,
-    message.text
+    message.text,
+    message.attributedBody
 FROM
     chat
     JOIN chat_message_join ON chat. \"ROWID\" = chat_message_join.chat_id
     JOIN message ON chat_message_join.message_id = message. \"ROWID\"
 WHERE
      chat.chat_identifier LIKE \"#{chat_id}\"
-     AND (now_epoch-message_epoch) <= 86400
+     AND (now_epoch-message_epoch) <= #{query_history}
 ORDER BY
     message_date ASC"
 
 db_results = db.execute(db_query)
 
-pp db_results
+db_results_parsed = db_results.map do |result|
+
+  if result[5] != nil
+    result[6] = nil
+    result
+  elsif result[6].nil?
+    result
+  else
+    attributed_body = result[6].force_encoding('UTF-8').encode('UTF-8', :invalid => :replace)
+
+    #puts "unicodebody: #{attributed_body}"
+
+    if attributed_body.include?("NSNumber")
+      attributed_body = attributed_body.split("NSNumber")[0]
+      if attributed_body.include?("NSString")
+        attributed_body = attributed_body.split("NSString")[1]
+        if attributed_body.include?("NSDictionary")
+          attributed_body = attributed_body.split("NSDictionary")[0]
+          attributed_body = attributed_body[6..-13]
+
+          if attributed_body =~ /^.[\u0000]/
+            result[5] = attributed_body.gsub(/^.[\u0000]/,'')
+          else
+            result[5] = attributed_body
+          end
+
+          result[6] = nil
+          result
+        end
+      end
+    end
+  end
+
+end
+pp db_results_parsed
+
+db_results_parsed.each do |r|
+  puts "========"
+  puts r[5]
+end
 
