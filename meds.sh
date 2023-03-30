@@ -2,7 +2,7 @@
 
 sleep_time=20
 take_soon_time=1800
-version=1.10
+version=1.11
 
 cd "$(dirname "$0")"
 
