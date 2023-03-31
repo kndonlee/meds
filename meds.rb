@@ -360,7 +360,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.5"
+    @version = "2.0.6"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -521,7 +521,7 @@ loop do
     end
   end
 
-  log_columns = 4
+  log_columns = 5
   log_records.each_slice(log_columns) do |slice|
     a = slice.map{ |s| s.split("\n") }
 
@@ -532,11 +532,16 @@ loop do
       end
     end
 
-    a[0].zip(
-      a[1].nil? ? dummy_array(max_rows) : a[1],
-      a[2].nil? ? dummy_array(max_rows) : a[2],
-      a[3].nil? ? dummy_array(max_rows) : a[3]
-    ).each do |row|
+    zipped_array = []
+    a.each_with_index do  |arr, i|
+      if i == 0
+        zipped_array = arr
+      else
+        zipped_array = zipped_array.zip(arr).map(&:flatten)
+      end
+    end
+
+    zipped_array.each do |row|
       puts row.join("   ")
     end
   end
