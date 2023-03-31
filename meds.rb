@@ -1,18 +1,18 @@
 #!/usr/bin/env ruby
 
 require 'sqlite3'
+require 'io/console'
 
 class Colors
   @codes = {
-    :reset => 0,
-    :black => 30,
-    :red => 31,
-    :green => 32,
-    :yellow => 33,
-    :blue => 34,
-    :purple => 35,
-    :cyan => 36,
-    :white => 37,
+    :black => 0,
+    :red => 1,
+    :green => 2,
+    :yellow => 3,
+    :blue => 4,
+    :purple => 5,
+    :cyan => 6,
+    :white => 7,
   }
 
   def self.method_missing(name, *args)
@@ -21,33 +21,35 @@ class Colors
 
     if name.to_s.include?("_")
       color, suffix = name.to_s.split("_", 2)
+      color = color.to_sym
     else
       color = name
     end
 
-    if @codes[color.to_sym].nil?
-      code = @codes[:reset]
+    if @codes[color].nil?
+      code = nil
     else
-      code = @codes[color.to_sym]
+      code = @codes[color]
     end
 
     if suffix == "bold"
-      decorator = 1
+      code += 8
     end
 
     if suffix == "bg"
-      code += 10
+      bg_code = 40 + code
     end
 
-    if name == :reset
-      "\e[#{@codes[:reset]}m"
+    if name == :reset || color.nil?
+      "\u001b[0m"
+    elsif bg_code
+      "\u001b[#{bg_code}m"
     else
-      "\e[#{decorator}:#{code}m"
+      "\u001b[38;5;#{code}m"
     end
   end
 end
 
-puts "#{Colors.white_bg}#{Colors.red_bold}COLOR TEST#{Colors.reset}"
 class IMessageChatDB
 
   #@@query_history = 4 * 86400
@@ -161,7 +163,10 @@ class Med
     end
 
     def to_s
-      "#{Med.epoch_to_time_s(epoch_time)} #{dose}#{dose_units}"
+      t = Med.epoch_to_time_s(epoch_time)
+      t = t.include?("am") ? "#{Colors.yellow}#{t}#{Colors.reset}" : "#{Colors.purple}#{t}#{Colors.reset}"
+
+      "#{t} #{Colors.purple_bold}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}"
     end
   end
 
@@ -259,25 +264,26 @@ class Med
 
   def due_to_s
     if elapsed > (@interval * 3600) && elapsed < (@required * 3600)
-      "Optl"
+      "#{Colors.blue_bg}#{Colors.yellow_bold}Optl#{Colors.reset}"
     elsif elapsed > (@required * 3600)
-      "TAKE"
+      "#{Colors.red}TAKE#{Colors.reset}"
     elsif elapsed < (@interval * 3600)
-      "wait"
+      "#{Colors.green}wait#{Colors.reset}"
     else
-      "Optl"
+      "#{Colors.blue_bg}#{Colors.yellow_bold}Optl#{Colors.reset}"
     end
   end
 
   def self.epoch_to_time_s(e)
-    Time.at(e).strftime("%I:%M %p")
+    Time.at(e).strftime("%I:%M%P")
   end
 
   def last_dose_s
     if last_dose.nil?
-      "NA      "
+      "#{Colors.cyan}NA     #{Colors.reset}"
     else
-      Med.epoch_to_time_s(last_dose)
+      t = Med.epoch_to_time_s(last_dose)
+      t.include?("am") ? "#{Colors.yellow}#{t}#{Colors.reset}" : "#{Colors.purple}#{t}#{Colors.reset}"
     end
   end
 
@@ -289,11 +295,14 @@ class Med
     s
   end
 
+  def color_hrs
+    "#{Colors.blue_bold}hrs#{Colors.reset}"
+  end
   def to_s
     interval = sprintf("%-2d", @interval)
     required = sprintf("%-2d", @required)
 
-    "Last:#{last_dose_s}  Elapsed:#{elapsed_to_s}  Due:#{due_to_s}  Every:#{interval}hrs  Required:#{required}hrs  Total:#{total_dose}#{@dose_units}"
+    "Last:#{last_dose_s}  Elapsed:#{Colors.cyan}#{elapsed_to_s}#{Colors.reset}  Due:#{due_to_s}  Every:#{Colors.cyan}#{interval}#{color_hrs}  Required:#{Colors.cyan}#{required}#{color_hrs}  Total:#{Colors.purple_bold}#{total_dose}#{Colors.blue_bold} #{@dose_units}#{Colors.reset}"
   end
 end
 
@@ -302,7 +311,7 @@ class MedDash
   attr_accessor :meds
   def initialize
     @version = "2.0.0"
-    @hostname = ENV['HOSTNAME']
+    @hostname = `hostname`.strip
     reset_meds
   end
 
@@ -311,11 +320,11 @@ class MedDash
   end
 
   def dashboard_header
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time} #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version} #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}#{Colors.reset}"
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}#{Colors.reset}"
   end
 
   def log_header
-    "Log"
+    "#{Colors.yellow_bold}Log#{Colors.reset}"
   end
 
   def reset_meds
@@ -402,12 +411,23 @@ class MedDash
 
 end
 
+def blank_entry
+  "               "
+end
+def dummy_array(entries)
+  a = []
+  (1..entries).each do |i|
+    a << blank_entry
+  end
+end
+
 md = MedDash.new
 
 loop do
   system "clear"
   md.reset_meds
   db = IMessageChatDB.new
+  $errors = ""
 
   db.get.each do |message|
     from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
@@ -426,23 +446,52 @@ loop do
       when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
       else
-        puts "unable to parse: #{line}"
+        $errors += "unable to parse: #{line}\n"
       end
     end
   end
 
   puts md.dashboard_header
+  puts
   md.meds.each_pair do |med, log|
+    puts if med == :taurine || med == :magnesium
     puts "#{sprintf("%-12s", med)} #{log}"
   end
 
   puts
-  puts "Log"
+  puts md.log_header
+
+  log_records = []
   md.meds.each_pair do |med, log|
-    puts "#{sprintf("%-12s", med)}"
-    puts "#{log.list_to_s}"
-    puts
+    log_list = log.list_to_s
+    unless log_list.empty?
+      log_records << "#{sprintf("%-#{blank_entry.length}s", med)}\n#{log.list_to_s}"
+    end
   end
+
+  log_columns = 4
+  log_records.each_slice(log_columns) do |slice|
+    a = slice.map{ |s| s.split("\n") }
+
+    max_rows = a.max_by(&:length).length
+    a.each do |array|
+      while array.length <= max_rows
+        array << blank_entry
+      end
+    end
+
+    a[0].zip(
+      a[1].nil? ? dummy_array(max_rows) : a[1],
+      a[2].nil? ? dummy_array(max_rows) : a[2],
+      a[3].nil? ? dummy_array(max_rows) : a[3]
+    ).each do |row|
+      puts row.join("   ")
+    end
+  end
+
+  puts
+  puts "#{Colors.yellow}Errors#{Colors.reset}"
+  puts $errors
 
   sleep(5)
 end
