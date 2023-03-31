@@ -61,6 +61,20 @@ class Colors
   end
 end
 
+class Updater
+  attr_reader :current_sha
+  def initialize
+    @current_sha = `git rev-parse HEAD`
+  end
+
+  def updated?
+    `git pull`
+    new_sha = `git rev-parse HEAD`
+
+    new_sha != @current_sha
+  end
+end
+
 class IMessageChatDB
 
   #@@query_history = 4 * 86400
@@ -440,6 +454,7 @@ def dummy_array(entries)
   a
 end
 
+updater = Updater.new
 md = MedDash.new
 
 loop do
@@ -512,5 +527,6 @@ loop do
   puts "#{Colors.yellow}Errors#{Colors.reset}"
   puts $errors
 
-  sleep(5)
+  break if updater.updated?
+  sleep(15)
 end
