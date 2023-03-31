@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.18"
+    @version = "2.0.19"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -568,6 +568,8 @@ loop do
 
   db.get.each do |message|
     from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
+
+    next if message_body.start_with?("Totals")
 
     message_body.split("\n").each do |line|
       case line
