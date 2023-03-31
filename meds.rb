@@ -19,9 +19,13 @@ class Colors
     "\u001b[38;5;#{i}m"
   end
 
+  def self.xterm_color_bg(i)
+    "\u001b[48;5;#{i}m"
+  end
   def self.xterm_bg(i)
     "\u001b[#{i}m"
   end
+
   def self.reset
     "\u001b[0m"
   end
@@ -32,6 +36,8 @@ class Colors
       ansi_escape_sequence = reset
     when /^c(\d+)$/
       ansi_escape_sequence = xterm_color($1)
+    when /^c(\d+)_bg$/
+      ansi_escape_sequence = xterm_color_bg($1)
     when /^(\w+)_bg$/
       i = @color_codes[$1.to_sym]
       if i.nil?
@@ -285,15 +291,27 @@ class Med
     end
   end
 
+  def optl_s
+    "#{Colors.c67_bg}#{Colors.c184}Optl#{Colors.reset}"
+  end
+
+  def take_s
+    "#{Colors.red}TAKE#{Colors.reset}"
+  end
+
+  def wait_s
+    "#{Colors.green}wait#{Colors.reset}"
+  end
+
   def due_to_s
     if elapsed > (@interval * 3600) && elapsed < (@required * 3600)
-      "#{Colors.blue_bg}#{Colors.yellow_bold}Optl#{Colors.reset}"
+      optl_s
     elsif elapsed > (@required * 3600)
-      "#{Colors.red}TAKE#{Colors.reset}"
+      take_s
     elsif elapsed < (@interval * 3600)
-      "#{Colors.green}wait#{Colors.reset}"
+      wait_s
     else
-      "#{Colors.blue_bg}#{Colors.yellow_bold}Optl#{Colors.reset}"
+      optl_s
     end
   end
 
@@ -342,7 +360,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.4"
+    @version = "2.0.5"
     @hostname = `hostname`.strip
     reset_meds
   end
