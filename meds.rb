@@ -4,7 +4,7 @@ require 'sqlite3'
 require 'io/console'
 
 class Colors
-  @codes = {
+  @color_codes = {
     :black => 0,
     :red => 1,
     :green => 2,
@@ -15,38 +15,49 @@ class Colors
     :white => 7,
   }
 
+  def self.xterm_color(i)
+    "\u001b[38;5;#{i}m"
+  end
+
+  def self.xterm_bg(i)
+    "\u001b[#{i}m"
+  end
+  def self.reset
+    "\u001b[0m"
+  end
+
   def self.method_missing(name, *args)
-    decorator = '0'
-    code = ''
-
-    if name.to_s.include?("_")
-      color, suffix = name.to_s.split("_", 2)
-      color = color.to_sym
+    case name.to_s
+    when "reset"
+      ansi_escape_sequence = reset
+    when /^c(\d+)$/
+      ansi_escape_sequence = xterm_color($1)
+    when /^(\w+)_bg$/
+      i = @color_codes[$1.to_sym]
+      if i.nil?
+        ansi_escape_sequence = reset
+      else
+        ansi_escape_sequence = xterm_bg(i.to_i+40)
+      end
+    when /^(\w+)_bold$/
+      i = @color_codes[$1.to_sym]
+      if i.nil?
+        ansi_escape_sequence = reset
+      else
+        ansi_escape_sequence = xterm_color(i.to_i+8)
+      end
+    when /^(\w+)$/
+      i = @color_codes[$1.to_sym]
+      if i.nil?
+        ansi_escape_sequence = reset
+      else
+        ansi_escape_sequence = xterm_color(i)
+      end
     else
-      color = name
+      ansi_escape_sequence = reset
     end
 
-    if @codes[color].nil?
-      code = nil
-    else
-      code = @codes[color]
-    end
-
-    if suffix == "bold"
-      code += 8
-    end
-
-    if suffix == "bg"
-      bg_code = 40 + code
-    end
-
-    if name == :reset || color.nil?
-      "\u001b[0m"
-    elsif bg_code
-      "\u001b[#{bg_code}m"
-    else
-      "\u001b[38;5;#{code}m"
-    end
+    ansi_escape_sequence
   end
 end
 
@@ -310,7 +321,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.0"
+    @version = "2.0.1"
     @hostname = `hostname`.strip
     reset_meds
   end
