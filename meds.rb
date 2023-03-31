@@ -65,6 +65,10 @@ class Colors
 
     ansi_escape_sequence
   end
+
+  def self.strip_color(str)
+    str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
+  end
 end
 
 class Updater
@@ -511,7 +515,7 @@ def dummy_array(entries)
 end
 
 def pad_right(str, length)
-  temp_str = strip_color(str)
+  temp_str = Colors.strip_color(str)
   if temp_str.length < length
     # If the string is shorter than the desired length,
     # add spaces to the end until it is the desired length.
@@ -520,9 +524,6 @@ def pad_right(str, length)
   str
 end
 
-def strip_color(str)
-  str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
-end
 
 emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
 def emoji?(str)
@@ -580,7 +581,7 @@ loop do
     end
   end
 
-  max_col_width = strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| strip_color(s).length}).length
+  max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
 
   log_columns = 5
   log_records.each_slice(log_columns) do |slice|
