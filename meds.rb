@@ -175,7 +175,7 @@ class Med
 
     def to_s
       t = Med.epoch_to_time_sc(epoch_time)
-      "#{t} #{Colors.purple_bold}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}"
+      "#{t} #{Colors.c183}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}"
     end
   end
 
