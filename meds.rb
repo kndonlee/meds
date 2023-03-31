@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.17"
+    @version = "2.0.18"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -595,11 +595,13 @@ loop do
   puts md.dashboard_header
   puts
   md.meds.each_pair do |med, log|
-    if med == :taurine || med == :magnesium || med == :esgic
+    if med == :taurine
       puts line(color:240)
-    else
-      puts "#{sprintf("%-12s", med)} #{log}"
+    elsif  med == :magnesium || med == :esgic
+      puts
     end
+
+    puts "#{sprintf("%-12s", med)} #{log}"
   end
 
   puts line(color:250)
