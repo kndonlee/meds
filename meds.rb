@@ -88,7 +88,7 @@ end
 class IMessageChatDB
 
   #@@query_history = 4 * 86400
-  @@query_history = 86400
+  @@query_history = 86400 * 2
   @@reset_time= 5
 
   def initialize
@@ -197,9 +197,14 @@ class Med
       @dose = dose.to_f
     end
 
+    def yesterday?
+      @epoch_time > Med.last_5am_epoch_yesterday && @epoch_time < Med.last_5am_epoch
+    end
+
     def to_s
+      yesterday = yesterday? ? "#{Colors.c72} [Y]#{Colors.reset}" : ""
       t = Med.epoch_to_time_sc(epoch_time)
-      "#{t} #{Colors.c183}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}"
+      "#{t} #{Colors.c183}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}#{yesterday}"
     end
   end
 
@@ -280,11 +285,19 @@ class Med
     end
   end
 
-  def total_dose
-    @dose_log.select { |dose| dose.epoch_time > last_5am_epoch}.map(&:dose).sum
+  def total_dose_yesterday
+    @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch}.map(&:dose).sum
   end
 
-  def last_5am_epoch
+  def total_dose
+    @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch}.map(&:dose).sum
+  end
+
+  def self.last_5am_epoch_yesterday
+    last_5am_epoch - 86400
+  end
+
+  def self.last_5am_epoch
     now = Time.now
     today_5am = Time.new(now.year, now.month, now.day, 5, 0, 0)
 
@@ -357,7 +370,7 @@ class Med
 
   def list_to_s
     s = ""
-    @dose_log.each do |d|
+    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch_yesterday}.each do |d|
       s += "#{d.to_s}\n"
     end
     s
@@ -386,9 +399,19 @@ class Med
 
   def to_s
     interval = sprintf("%2d", @interval)
-    required = sprintf("%2d", @required)
+    required_formatted = sprintf("%2d", @required)
+    dose = sprintf("%6.1f", total_dose)
+    dose_y = sprintf("%6.1f", total_dose_yesterday)
 
-    "Last:#{last_dose_s}  Elapsed:#{color_elapsed}  Due:#{due_to_s}  Every:#{Colors.cyan}#{interval}#{color_hrs}  Required:#{Colors.cyan}#{required}#{color_hrs}  Total:#{Colors.purple_bold}#{total_dose}#{Colors.blue_bold} #{@dose_units}#{Colors.reset}"
+    last = "Last:#{last_dose_s}"
+    elapsed = "Elapsed:#{color_elapsed}"
+    due = "Due:#{due_to_s}"
+    every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
+    required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
+    total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
+    total_yesterday = "YTotal:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
+
+    "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{total} #{total_yesterday}"
   end
 end
 
