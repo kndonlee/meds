@@ -379,7 +379,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.7"
+    @version = "2.0.8"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -480,15 +480,35 @@ class MedDash
 
 end
 
-def blank_entry
-  "               "
+def blank_entry(size:0)
+  entry = ""
+  size.to_i.times do |i|
+    entry += " "
+  end
+
+  entry
 end
+
 def dummy_array(entries)
   a = []
   (1..entries).each do |i|
     a << blank_entry
   end
   a
+end
+
+def pad_right(str, length)
+  temp_str = strip_color(str)
+  if temp_str.length < length
+    # If the string is shorter than the desired length,
+    # add spaces to the end until it is the desired length.
+    str += " " * (length - temp_str.length)
+  end
+  str
+end
+
+def strip_color(str)
+  str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
 end
 
 updater = Updater.new
@@ -536,18 +556,22 @@ loop do
   md.meds.each_pair do |med, log|
     log_list = log.list_to_s
     unless log_list.empty?
-      log_records << "#{sprintf("%-#{blank_entry.length}s", med)}\n#{log.list_to_s}"
+      log_records << "#{med}\n#{log.list_to_s}"
     end
   end
+
+  max_col_width = strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| strip_color(s).length}).length
 
   log_columns = 5
   log_records.each_slice(log_columns) do |slice|
     a = slice.map{ |s| s.split("\n") }
 
+    # zip truncates based on the shortest array
+    # add empty array entries to equalize all arrays to be zipped
     max_rows = a.max_by(&:length).length
     a.each do |array|
       while array.length <= max_rows
-        array << blank_entry
+        array << blank_entry(size: max_col_width)
       end
     end
 
@@ -561,7 +585,8 @@ loop do
     end
 
     zipped_array.each do |row|
-      puts row.join("   ")
+      array = row.map{|r| pad_right(r, max_col_width)}
+      puts array.join("  ")
     end
   end
 
