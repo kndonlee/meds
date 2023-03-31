@@ -348,11 +348,30 @@ class Med
   def color_hrs
     "#{Colors.blue_bold}hrs#{Colors.reset}"
   end
+
+  def color_elapsed
+    e = elapsed_to_s
+    case e
+    when /^01/
+      "#{Colors.c70}#{elapsed_to_s}#{Colors.reset}"
+    when /^0[23]/
+      "#{Colors.c71}#{elapsed_to_s}#{Colors.reset}"
+    when /^0[456]/
+      "#{Colors.c72}#{elapsed_to_s}#{Colors.reset}"
+    when /^0[789]/
+      "#{Colors.c73}#{elapsed_to_s}#{Colors.reset}"
+    when /^1/
+      "#{Colors.c74}#{elapsed_to_s}#{Colors.reset}"
+    else
+      "#{Colors.c75}#{elapsed_to_s}#{Colors.reset}"
+    end
+  end
+
   def to_s
     interval = sprintf("%-2d", @interval)
     required = sprintf("%-2d", @required)
 
-    "Last:#{last_dose_s}  Elapsed:#{Colors.cyan}#{elapsed_to_s}#{Colors.reset}  Due:#{due_to_s}  Every:#{Colors.cyan}#{interval}#{color_hrs}  Required:#{Colors.cyan}#{required}#{color_hrs}  Total:#{Colors.purple_bold}#{total_dose}#{Colors.blue_bold} #{@dose_units}#{Colors.reset}"
+    "Last:#{last_dose_s}  Elapsed:#{color_elapsed}  Due:#{due_to_s}  Every:#{Colors.cyan}#{interval}#{color_hrs}  Required:#{Colors.cyan}#{required}#{color_hrs}  Total:#{Colors.purple_bold}#{total_dose}#{Colors.blue_bold} #{@dose_units}#{Colors.reset}"
   end
 end
 
@@ -360,7 +379,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.6"
+    @version = "2.0.7"
     @hostname = `hostname`.strip
     reset_meds
   end
