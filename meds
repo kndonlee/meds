@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
-: ${mode:=RUBY}
+while true; do
+  : ${mode:=RUBY}
 
-cd "$(dirname "$0")"
+  cd "$(dirname "$0")"
 
-git pull
+  git pull
 
-if [[ $mode = "BASH" ]]; then
-  ./meds.sh
-elif [[ $mode = "RUBY" ]]; then
-  ./meds.rb
-fi
+  if [[ $mode = "BASH" ]]; then
+    ./meds.sh
+  elif [[ $mode = "RUBY" ]]; then
+    ./meds.rb
+  fi
+
+  sleep 5
+done
