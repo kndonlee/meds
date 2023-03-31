@@ -174,9 +174,7 @@ class Med
     end
 
     def to_s
-      t = Med.epoch_to_time_s(epoch_time)
-      t = t.include?("am") ? "#{Colors.yellow}#{t}#{Colors.reset}" : "#{Colors.purple}#{t}#{Colors.reset}"
-
+      t = Med.epoch_to_time_sc(epoch_time)
       "#{t} #{Colors.purple_bold}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}"
     end
   end
@@ -289,12 +287,21 @@ class Med
     Time.at(e).strftime("%I:%M%P")
   end
 
+  def self.epoch_to_time_sc(e)
+    time, meridien = Time.at(e).strftime("%I:%M %P").split(" ")
+    if meridien.include?("am")
+      #"#{Colors.c178}#{time}#{Colors.c208}#{meridien}#{Colors.reset}"
+      "#{Colors.c208}#{time}#{Colors.c210}#{meridien}#{Colors.reset}"
+    else
+      "#{Colors.purple}#{time}#{Colors.c169}#{meridien}#{Colors.reset}"
+    end
+  end
+
   def last_dose_s
     if last_dose.nil?
       "#{Colors.cyan}NA     #{Colors.reset}"
     else
-      t = Med.epoch_to_time_s(last_dose)
-      t.include?("am") ? "#{Colors.yellow}#{t}#{Colors.reset}" : "#{Colors.purple}#{t}#{Colors.reset}"
+      Med.epoch_to_time_sc(last_dose)
     end
   end
 
@@ -321,7 +328,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.1"
+    @version = "2.0.2"
     @hostname = `hostname`.strip
     reset_meds
   end
