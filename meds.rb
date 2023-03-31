@@ -306,7 +306,7 @@ class Med
   end
 
   def optional?
-    (@interval * 3600) && elapsed < (@required * 3600)
+    elapsed > (@interval * 3600) && elapsed < (@required * 3600)
   end
 
   def due?
@@ -393,7 +393,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.10"
+    @version = "2.0.11"
     @hostname = `hostname`.strip
     reset_meds
   end
