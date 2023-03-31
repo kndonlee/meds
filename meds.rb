@@ -3,11 +3,13 @@
 require 'sqlite3'
 
 class IMessageChatDB
-  @@query_history = 4 * 86400
+
+  #@@query_history = 4 * 86400
+  @@query_history = 86400
+  @@reset_time= 5
 
   def initialize
     @db_path = "#{ENV['HOME']}/Library/Messages/chat.db"
-    @db = SQLite3::Database.new(@db_path)
 
     unless File.readable?(@db_path)
       raise "status=ERROR error=FILE_READ file=#{@db_path}"
@@ -48,6 +50,7 @@ class IMessageChatDB
   end
 
   def get
+    @db = SQLite3::Database.new(@db_path)
     db_results = @db.execute(db_query)
 
     db_results_parsed = db_results.map do |result|
@@ -86,7 +89,7 @@ class IMessageChatDB
 
     @db.close
 
-    db_results_parsed
+    db_results_parsed.compact
   end
 
   def pretty_print
@@ -102,5 +105,298 @@ class IMessageChatDB
   end
 end
 
-db = IMessageChatDB.new
-db.pretty_print
+class Med
+  class Dose
+    attr_accessor :epoch_time, :dose, :dose_units
+    def initialize(epoch_time:, dose:, dose_units:)
+      @epoch_time = epoch_time
+      @dose_units = dose_units
+      @dose = dose.to_f
+    end
+
+    def to_s
+      "#{Med.epoch_to_time_s(epoch_time)} #{dose}#{dose_units}"
+    end
+  end
+
+  def initialize(name:, interval:, required:true, default_dose:, dose_units:)
+    @name = name
+    @interval = interval
+    @required = required
+    @default_dose = default_dose
+    @dose_units = dose_units
+
+    @dose_log = []
+  end
+
+  def normalize_dose(dose, dose_units)
+    if dose.to_s.include?("/")
+      n, d = dose.split('/').map(&:to_i)
+      normalized_dose = n.to_f / d
+    else
+      normalized_dose = dose.to_f
+    end
+
+    if dose_units.to_s.downcase == @dose_units.to_s
+      normalized_dose
+    elsif dose_units.to_s.strip.empty?
+      normalized_dose
+    elsif @dose_units.to_s.downcase == "mg" && dose_units.to_s.downcase == "g"
+      normalized_dose = normalized_dose * 1000
+    elsif @dose_units.to_s.downcase == "g" && dose_units.to_s.downcase == "mg"
+      normalized_dose = normalized_dose.to_f / 1000
+    else
+      puts "#{@name} unable to normalize dose from #{dose} #{dose_units} to #{@dose_units}"
+    end
+
+    normalized_dose
+  end
+
+  def log(epoch_time:, dose:nil, units:nil)
+    dose = dose.nil? ? @default_dose : dose
+    dose = normalize_dose(dose, units)
+
+    @dose_log.push(
+      Dose.new(
+        epoch_time: epoch_time,
+        dose: dose,
+        dose_units: @dose_units,
+      )
+    )
+  end
+
+  def elapsed
+    if last_dose.nil?
+      86400
+    else
+      (Time.now.to_i - last_dose).abs
+    end
+  end
+
+  def elapsed_to_s
+    elapsed_s = elapsed
+
+    if elapsed_s == 0
+      "00:00"
+    else
+      elapsed_hours = sprintf("%02d", (elapsed_s / 3600).to_i)
+      elapsed_minutes = sprintf("%02d", ((elapsed_s % 3600) / 60).to_i)
+
+      "#{elapsed_hours}:#{elapsed_minutes}"
+    end
+  end
+
+  def last_dose
+    if @dose_log.last.nil?
+      nil
+    else
+      @dose_log.last.epoch_time
+    end
+  end
+
+  def total_dose
+    @dose_log.select { |dose| dose.epoch_time > last_5am_epoch}.map(&:dose).sum
+  end
+
+  def last_5am_epoch
+    now = Time.now
+    today_5am = Time.new(now.year, now.month, now.day, 5, 0, 0)
+
+    if now < today_5am
+      # if it's before 5am today, go back to yesterday at 5am
+      yesterday_5am = today_5am - 24 * 60 * 60
+      return yesterday_5am.to_i
+    else
+      return today_5am.to_i
+    end
+  end
+
+  def due_to_s
+    if elapsed > (@interval * 3600) && elapsed < (@required * 3600)
+      "Optl"
+    elsif elapsed > (@required * 3600)
+      "TAKE"
+    elsif elapsed < (@interval * 3600)
+      "wait"
+    else
+      "Optl"
+    end
+  end
+
+  def self.epoch_to_time_s(e)
+    Time.at(e).strftime("%I:%M %p")
+  end
+
+  def last_dose_s
+    if last_dose.nil?
+      "NA      "
+    else
+      Med.epoch_to_time_s(last_dose)
+    end
+  end
+
+  def list_to_s
+    s = ""
+    @dose_log.each do |d|
+      s += "#{d.to_s}\n"
+    end
+    s
+  end
+
+  def to_s
+    interval = sprintf("%-2d", @interval)
+    required = sprintf("%-2d", @required)
+
+    "Last:#{last_dose_s}  Elapsed:#{elapsed_to_s}  Due:#{due_to_s}  Every:#{interval}hrs  Required:#{required}hrs  Total:#{total_dose}#{@dose_units}"
+  end
+end
+
+class MedDash
+
+  attr_accessor :meds
+  def initialize
+    @version = "2.0.0"
+    @hostname = ENV['HOSTNAME']
+    reset_meds
+  end
+
+  def last_update_time
+    Time.now.strftime("%a %Y-%m-%d %I:%M:%S%P")
+  end
+
+  def dashboard_header
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time} #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version} #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}#{Colors.reset}"
+  end
+
+  def log_header
+    "Log"
+  end
+
+  def reset_meds
+    # required == interval => TAKE
+    # required >  interval => Optl to TAKE
+    #
+    @meds = {}
+    @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   dose_units: :mg)
+    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:24, default_dose:7.5,  dose_units: :mg)
+    @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  dose_units: :mg)
+    @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    dose_units: :unit)
+    @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  dose_units: :mg)
+    @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, dose_units: :mg)
+
+    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  dose_units: :mg)
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg)
+    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  dose_units: :mg)
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg)
+    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   dose_units: :mg)
+    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  dose_units: :mg)
+    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, dose_units: :iu)
+    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, dose_units: :mg)
+  end
+
+  # [
+  #  0, #0 from me
+  #  "chat574232935236064109", #1 chat id
+  #  "2023-03-29 20:37:55", #2 readable time
+  #  1680143875, #3 message time
+  #  "1680194315", #4 current time
+  #  "8:37:17 PM MDT\n" + #message
+  #    "\n" +
+  #    "Lyrica\n" +
+  #    ".25mg Xanax\n" +
+  #    "3/4 Baclofen\n" +
+  #    "2 Liver\n" +
+  #    "3 Bone Marrow\n" +
+  #    "3000IU Vitamin D\n" +
+  #    "10.5mg Iron\n" +
+  #    "10.5mg Iron\n" +
+  #    "500mg Taurine\n" +
+  #    "500mg MSM\n" +
+  #    "250mg Calcium",
+  #  ],
+  #
+  def add_med(med:, epoch_time:, dose:nil, unit:nil)
+    case med
+    when /morph/i
+      if dose == 7.5
+        @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
+      else
+        @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      end
+    when /baclo/i
+      if dose == "3/4"
+        @meds[:baclofen].log(epoch_time:epoch_time, dose:7.5, units:"mg")
+      else
+        @meds[:baclofen].log(epoch_time:epoch_time, dose:dose, units:unit)
+      end
+    when /esgic/i
+      @meds[:esgic].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /lyric/i
+      @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /xanax/i
+      @meds[:xanax].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /taurine/i
+      @meds[:taurine].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /calcium/i
+      @meds[:calcium].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /msm/i
+      @meds[:msm].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /iron/i
+      @meds[:iron].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /magnes/i
+      @meds[:magnesium].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /nac/i
+      @meds[:nac].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /vitamin\s*d/i
+      @meds[:vitamin_d].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /theanine/i
+      @meds[:l_theanine].log(epoch_time:epoch_time, dose:dose, units:unit)
+    end
+  end
+
+end
+
+md = MedDash.new
+
+loop do
+  system "clear"
+  md.reset_meds
+  db = IMessageChatDB.new
+
+  db.get.each do |message|
+    from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
+
+    message_body.split("\n").each do |line|
+      case line
+      when /[0-9]+\s*[aApP]/ # 10p 10a 9a
+      when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
+      when /^\s*$/ # empty line
+      when /^\s*[A-Za-z+]+\s*$/ # morphine
+        md.add_med(med:line.strip, epoch_time:message_epoch)
+      when /^\s*(\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
+        md.add_med(med:$3, epoch_time:message_epoch, dose: $1)
+      when /^\s*(\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
+        md.add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
+      when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
+        md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
+      else
+        puts "unable to parse: #{line}"
+      end
+    end
+  end
+
+  puts md.dashboard_header
+  md.meds.each_pair do |med, log|
+    puts "#{sprintf("%-12s", med)} #{log}"
+  end
+
+  puts
+  puts "Log"
+  md.meds.each_pair do |med, log|
+    puts "#{sprintf("%-12s", med)}"
+    puts "#{log.list_to_s}"
+    puts
+  end
+
+  sleep(5)
+end
