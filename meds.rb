@@ -409,7 +409,7 @@ class Med
     every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
     required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
     total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
-    total_yesterday = "YTotal:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
+    total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
 
     "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{total} #{total_yesterday}"
   end
@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.15"
+    @version = "2.0.16"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -578,6 +578,8 @@ loop do
         md.add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
       when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
+      when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
+        # ignore
       when emoji_regex
         # ignore
       else
