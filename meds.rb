@@ -437,6 +437,7 @@ def dummy_array(entries)
   (1..entries).each do |i|
     a << blank_entry
   end
+  a
 end
 
 md = MedDash.new
