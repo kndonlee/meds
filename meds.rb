@@ -365,18 +365,17 @@ class Med
 
   def color_elapsed
     e = elapsed_to_s
-    case e
-    when /^01/
+    if e =~ /^00:/
       "#{Colors.c70}#{elapsed_to_s}#{Colors.reset}"
-    when /^0[23]/
+    elsif e =~ /^0[12]:/
       "#{Colors.c71}#{elapsed_to_s}#{Colors.reset}"
-    when /^0[456]/
+    elsif e =~ /^0[345]:/
       "#{Colors.c72}#{elapsed_to_s}#{Colors.reset}"
-    when /^0[789]/
+    elsif e =~ /^0[6789]:/
       "#{Colors.c73}#{elapsed_to_s}#{Colors.reset}"
-    when /^1/
+    elsif e =~ /^1.:/
       "#{Colors.c74}#{elapsed_to_s}#{Colors.reset}"
-    else
+    else #20 hrs and beyond
       "#{Colors.c75}#{elapsed_to_s}#{Colors.reset}"
     end
   end
@@ -393,7 +392,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.11"
+    @version = "2.0.12"
     @hostname = `hostname`.strip
     reset_meds
   end
