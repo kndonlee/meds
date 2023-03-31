@@ -2,6 +2,52 @@
 
 require 'sqlite3'
 
+class Colors
+  @codes = {
+    :reset => 0,
+    :black => 30,
+    :red => 31,
+    :green => 32,
+    :yellow => 33,
+    :blue => 34,
+    :purple => 35,
+    :cyan => 36,
+    :white => 37,
+  }
+
+  def self.method_missing(name, *args)
+    decorator = '0'
+    code = ''
+
+    if name.to_s.include?("_")
+      color, suffix = name.to_s.split("_", 2)
+    else
+      color = name
+    end
+
+    if @codes[color.to_sym].nil?
+      code = @codes[:reset]
+    else
+      code = @codes[color.to_sym]
+    end
+
+    if suffix == "bold"
+      decorator = 1
+    end
+
+    if suffix == "bg"
+      code += 10
+    end
+
+    if name == :reset
+      "\e[#{@codes[:reset]}m"
+    else
+      "\e[#{decorator}:#{code}m"
+    end
+  end
+end
+
+puts "#{Colors.white_bg}#{Colors.red_bold}COLOR TEST#{Colors.reset}"
 class IMessageChatDB
 
   #@@query_history = 4 * 86400
