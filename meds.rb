@@ -393,7 +393,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.9"
+    @version = "2.0.10"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -423,9 +423,9 @@ class MedDash
     @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, dose_units: :mg,   emoji:"1F630")
 
     @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg,   emoji:"1F9B4")
     @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg,   emoji:"1F48A")
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg,   emoji:"1FA78")
     @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   dose_units: :mg,   emoji:"1F48A")
     @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  dose_units: :mg,   emoji:"1F48A")
     @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, dose_units: :iu,   emoji:"1F48A")
@@ -525,6 +525,11 @@ def strip_color(str)
   str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
 end
 
+emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
+def emoji?(str)
+  str =~ emoji_regex
+end
+
 updater = Updater.new
 md = MedDash.new
 
@@ -550,6 +555,8 @@ loop do
         md.add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
       when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
+      when emoji_regex
+        # ignore
       else
         $errors += "unable to parse: #{line}\n"
       end
@@ -598,7 +605,6 @@ loop do
       end
     end
 
-    emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
 
     zipped_array.each do |row|
       array = row.map{|r| pad_right(r, max_col_width)}
