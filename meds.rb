@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.16"
+    @version = "2.0.17"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -553,6 +553,10 @@ def emoji?(str)
   str =~ emoji_regex
 end
 
+def line(color:242)
+  "#{Colors.send("c#{color}")}------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
+end
+
 updater = Updater.new
 md = MedDash.new
 
@@ -591,11 +595,14 @@ loop do
   puts md.dashboard_header
   puts
   md.meds.each_pair do |med, log|
-    puts if med == :taurine || med == :magnesium
-    puts "#{sprintf("%-12s", med)} #{log}"
+    if med == :taurine || med == :magnesium || med == :esgic
+      puts line(color:240)
+    else
+      puts "#{sprintf("%-12s", med)} #{log}"
+    end
   end
 
-  puts
+  puts line(color:250)
   puts md.log_header
 
   log_records = []
@@ -641,7 +648,7 @@ loop do
     end
   end
 
-  puts
+  puts line(color:250)
   puts "#{Colors.yellow}Errors#{Colors.reset}"
   puts $errors
 
