@@ -199,7 +199,8 @@ class Med
     end
   end
 
-  def initialize(name:, interval:, required:true, default_dose:, dose_units:)
+  attr_reader :emoji
+  def initialize(name:, interval:, required:true, default_dose:, dose_units:, emoji:)
     @name = name
     @interval = interval
     @required = required
@@ -207,6 +208,7 @@ class Med
     @dose_units = dose_units
 
     @dose_log = []
+    @emoji = [emoji.hex].pack("U") # convert to unicode emoji
   end
 
   def normalize_dose(dose, dose_units)
@@ -303,12 +305,24 @@ class Med
     "#{Colors.green}wait#{Colors.reset}"
   end
 
+  def optional?
+    (@interval * 3600) && elapsed < (@required * 3600)
+  end
+
+  def due?
+    elapsed > (@required * 3600)
+  end
+
+  def wait?
+    elapsed < (@interval * 3600)
+  end
+
   def due_to_s
-    if elapsed > (@interval * 3600) && elapsed < (@required * 3600)
+    if optional?
       optl_s
-    elsif elapsed > (@required * 3600)
+    elsif due?
       take_s
-    elsif elapsed < (@interval * 3600)
+    elsif wait?
       wait_s
     else
       optl_s
@@ -368,8 +382,8 @@ class Med
   end
 
   def to_s
-    interval = sprintf("%-2d", @interval)
-    required = sprintf("%-2d", @required)
+    interval = sprintf("%2d", @interval)
+    required = sprintf("%2d", @required)
 
     "Last:#{last_dose_s}  Elapsed:#{color_elapsed}  Due:#{due_to_s}  Every:#{Colors.cyan}#{interval}#{color_hrs}  Required:#{Colors.cyan}#{required}#{color_hrs}  Total:#{Colors.purple_bold}#{total_dose}#{Colors.blue_bold} #{@dose_units}#{Colors.reset}"
   end
@@ -379,7 +393,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.8"
+    @version = "2.0.9"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -401,21 +415,21 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   dose_units: :mg)
-    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:24, default_dose:7.5,  dose_units: :mg)
-    @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  dose_units: :mg)
-    @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    dose_units: :unit)
-    @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  dose_units: :mg)
-    @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, dose_units: :mg)
+    @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   dose_units: :mg,   emoji:"1F480")
+    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:24, default_dose:7.5,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  dose_units: :mg,   emoji:"26A1")
+    @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    dose_units: :unit, emoji:"1F915")
+    @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  dose_units: :mg,   emoji:"1F9E0")
+    @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, dose_units: :mg,   emoji:"1F630")
 
-    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  dose_units: :mg)
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg)
-    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  dose_units: :mg)
-    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg)
-    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   dose_units: :mg)
-    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  dose_units: :mg)
-    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, dose_units: :iu)
-    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, dose_units: :mg)
+    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg,   emoji:"1F48A")
+    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   dose_units: :mg,   emoji:"1F48A")
+    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, dose_units: :iu,   emoji:"1F48A")
+    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, dose_units: :mg,   emoji:"1F48A")
   end
 
   # [
@@ -556,7 +570,7 @@ loop do
   md.meds.each_pair do |med, log|
     log_list = log.list_to_s
     unless log_list.empty?
-      log_records << "#{med}\n#{log.list_to_s}"
+      log_records << "#{log.emoji} #{med}\n#{log.list_to_s}"
     end
   end
 
@@ -584,9 +598,15 @@ loop do
       end
     end
 
+    emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
+
     zipped_array.each do |row|
       array = row.map{|r| pad_right(r, max_col_width)}
-      puts array.join("  ")
+      if row[0] =~ emoji_regex
+        puts array.join(" ")
+      else
+        puts array.join("  ")
+      end
     end
   end
 
