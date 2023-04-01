@@ -281,7 +281,7 @@ class Med
     if @dose_log.last.nil?
       nil
     else
-      @dose_log.last.epoch_time
+      @dose_log.select{|d| d.dose > 0}.last.epoch_time
     end
   end
 
@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.21"
+    @version = "2.0.22"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -578,9 +578,9 @@ loop do
       when /^\s*$/ # empty line
       when /^\s*[A-Za-z+]+\s*$/ # morphine
         md.add_med(med:line.strip, epoch_time:message_epoch)
-      when /^\s*(\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
+      when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
         md.add_med(med:$3, epoch_time:message_epoch, dose: $1)
-      when /^\s*(\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
+      when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
         md.add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
       when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
