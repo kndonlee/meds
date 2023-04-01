@@ -419,7 +419,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.20"
+    @version = "2.0.21"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -482,7 +482,7 @@ class MedDash
   def add_med(med:, epoch_time:, dose:nil, unit:nil)
     case med
     when /morph/i
-      if dose == 7.5
+      if dose == "7.5"
         @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
       else
         @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
