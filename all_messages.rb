@@ -19,7 +19,7 @@ else
   chat_id = "chat574232935236064109"
 end
 
-query_history = 4 * 86400
+query_history = 365 * 86400
 
 db_query = "SELECT
     message.is_from_me,
@@ -75,7 +75,7 @@ db_results_parsed = db_results.map do |result|
   end
 
 end
-pp db_results_parsed
+#pp db_results_parsed
 
 db_results_parsed.each do |r|
   puts "========"
