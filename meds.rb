@@ -354,9 +354,9 @@ class Med
     time, meridien = Time.at(e).strftime("%I:%M %P").split(" ")
     if meridien.include?("am")
       #"#{Colors.c178}#{time}#{Colors.c208}#{meridien}#{Colors.reset}"
-      "#{Colors.c208}#{time}#{Colors.c210}#{meridien}#{Colors.reset}"
+      "#{Colors.c208}#{time}#{Colors.c210}#{meridien} #{Colors.reset}"
     else
-      "#{Colors.purple}#{time}#{Colors.c169}#{meridien}#{Colors.reset}"
+      "#{Colors.purple}#{time}#{Colors.c169}#{meridien} #{Colors.reset}"
     end
   end
 
@@ -368,9 +368,24 @@ class Med
     end
   end
 
+  # Summarize
+  def list_yesterday_to_s
+    yesterday_doses = @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch}
+
+    return "" if yesterday_doses.empty?
+    #puts yesterday_doses.first.epoch_time
+    date = Time.at(yesterday_doses.first.epoch_time).strftime("%m/%d");
+    s = ""
+    yesterday_counts = yesterday_doses.group_by(&:dose).transform_values(&:count)
+    yesterday_counts.each do |dose, count|
+      s += "#{Colors.c72}#{sprintf("%-8s",date + " " + count.to_s + "x")} #{Colors.c183}#{dose} #{Colors.blue_bold}#{@dose_units}#{Colors.reset}\n"
+    end
+    s
+  end
+
   def list_to_s
     s = ""
-    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch_yesterday}.each do |d|
+    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch}.each do |d|
       s += "#{d.to_s}\n"
     end
     s
@@ -419,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.22"
+    @version = "2.0.23"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -442,7 +457,7 @@ class MedDash
     #
     @meds = {}
     @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   dose_units: :mg,   emoji:"1F480")
-    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:24, default_dose:7.5,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:48, default_dose:7.5,  dose_units: :mg,   emoji:"1F48A")
     @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  dose_units: :mg,   emoji:"26A1")
     @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    dose_units: :unit, emoji:"1F915")
     @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  dose_units: :mg,   emoji:"1F9E0")
@@ -611,9 +626,14 @@ loop do
 
   log_records = []
   md.meds.each_pair do |med, log|
+    log_summary_yesterday = log.list_yesterday_to_s
     log_list = log.list_to_s
-    unless log_list.empty?
-      log_records << "#{log.emoji} #{med}\n#{log.list_to_s}"
+
+    unless log_list.empty? || log_summary_yesterday.empty?
+      record = "#{log.emoji} #{med}\n"
+      record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
+      record += "#{log_list}" unless log_list.empty?
+      log_records << record
     end
   end
 
