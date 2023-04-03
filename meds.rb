@@ -434,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.26"
+    @version = "2.0.25"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -603,7 +603,7 @@ loop do
       when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
         # ignore
       when /^Note/
-        $notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
+        $notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line}#{Colors.reset}\n"
       when emoji_regex
         # ignore
       else
