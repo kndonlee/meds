@@ -434,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.25"
+    @version = "2.0.23"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -580,7 +580,6 @@ loop do
   md.reset_meds
   db = IMessageChatDB.new
   $errors = ""
-  $notes = ""
 
   db.get.each do |message|
     from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
@@ -602,12 +601,10 @@ loop do
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
       when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
         # ignore
-      when /^Note/
-        $notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line}#{Colors.reset}\n"
       when emoji_regex
         # ignore
       else
-        $errors += "parse_error: #{line}\n"
+        $errors += "unable to parse: #{line}\n"
       end
     end
   end
@@ -676,17 +673,8 @@ loop do
   end
 
   puts line(color:250)
-  unless $notes.empty?
-    puts
-    puts "#{Colors.yellow}Notes#{Colors.reset}"
-    puts $notes
-  end
-
-  unless $errors.empty?
-    puts
-    puts "#{Colors.yellow}Errors#{Colors.reset}"
-    puts $errors
-  end
+  puts "#{Colors.yellow}Errors#{Colors.reset}"
+  puts $errors
 
   break if updater.updated?
   sleep(15)
