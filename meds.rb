@@ -434,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.28"
+    @version = "2.0.29"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -645,7 +645,7 @@ loop do
 
   max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
 
-  log_columns = 5
+  log_columns = 6
   log_records.each_slice(log_columns) do |slice|
     a = slice.map{ |s| s.split("\n") }
 
@@ -661,12 +661,12 @@ loop do
     zipped_array = []
     a.each_with_index do  |arr, i|
       if i == 0
-        zipped_array = arr
+        zipped_array = arr.map{|a| [a]}
       else
-        zipped_array = zipped_array.zip(arr).map(&:flatten)
+        temp_array = zipped_array.zip(arr)
+        zipped_array = temp_array.map(&:flatten)
       end
     end
-
 
     zipped_array.each do |row|
       array = row.map{|r| pad_right(r, max_col_width)}
