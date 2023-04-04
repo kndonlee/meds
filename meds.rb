@@ -629,12 +629,16 @@ loop do
     log_summary_yesterday = log.list_yesterday_to_s
     log_list = log.list_to_s
 
-    unless log_list.empty? || log_summary_yesterday.empty?
-      record = "#{log.emoji} #{med}\n"
-      record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
-      record += "#{log_list}" unless log_list.empty?
+    record = ""
+    record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
+    record += "#{log_list}" unless log_list.empty?
+
+    unless record.empty?
+      record = "#{log.emoji} #{med}\n#{record}"
       log_records << record
     end
+
+    log_records
   end
 
   max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
