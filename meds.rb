@@ -434,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.30"
+    @version = "2.0.31"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -586,6 +586,7 @@ loop do
     from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
 
     next if message_body.start_with?("Totals")
+    next if message_body.start_with?("Edited to")
 
     message_body.split("\n").each do |line|
       case line
