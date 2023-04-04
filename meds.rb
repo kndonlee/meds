@@ -434,7 +434,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.26"
+    @version = "2.0.27"
     @hostname = `hostname`.strip
     reset_meds
   end
@@ -602,7 +602,7 @@ loop do
         md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
       when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
         # ignore
-      when /^Note/
+      when /^[Nn]ote/
         $notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
       when emoji_regex
         # ignore
@@ -681,13 +681,11 @@ loop do
 
   puts line(color:250)
   unless $notes.empty?
-    puts
     puts "#{Colors.yellow}Notes#{Colors.reset}"
     puts $notes
   end
 
   unless $errors.empty?
-    puts
     puts "#{Colors.yellow}Errors#{Colors.reset}"
     puts $errors
   end
