@@ -367,7 +367,7 @@ class Med
   end
 
   def done_s
-    "#{Colors.c48}done#{Colors.reset}"
+    "#{Colors.c154}done#{Colors.reset}"
   end
 
   def optional?
@@ -489,7 +489,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.4"
+    @version = "2.1.5"
     @hostname = `hostname`.strip
     reset_meds
 
