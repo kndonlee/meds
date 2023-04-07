@@ -252,12 +252,13 @@ class Med
   end
 
   attr_reader :emoji, :dose_units
-  def initialize(name:, interval:, required:true, default_dose:, dose_units:, emoji:)
+  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, emoji:)
     @name = name
     @interval = interval
     @required = required
     @default_dose = default_dose
     @dose_units = dose_units
+    @max_dose = max_dose
 
     @dose_log = []
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
@@ -365,6 +366,10 @@ class Med
     "#{Colors.c10}wait#{Colors.reset}"
   end
 
+  def done_s
+    "#{Colors.c48}done#{Colors.reset}"
+  end
+
   def optional?
     elapsed > (@interval * 3600) && elapsed < (@required * 3600)
   end
@@ -377,8 +382,14 @@ class Med
     elapsed < (@interval * 3600)
   end
 
+  def done?
+    total_dose >= @max_dose && @max_dose != 0
+  end
+
   def due_to_s
-    if optional?
+    if done?
+      done_s
+    elsif optional?
       optl_s
     elsif due?
       take_s
@@ -478,7 +489,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.3"
+    @version = "2.1.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -508,21 +519,21 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   dose_units: :mg,   emoji:"1F480")
-    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:48, default_dose:7.5,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  dose_units: :mg,   emoji:"26A1")
-    @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    dose_units: :unit, emoji:"1F915")
-    @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  dose_units: :mg,   emoji:"1F9E0")
-    @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, dose_units: :mg,   emoji:"1F630")
+    @meds[:morphine]    = Med.new(name: :morphine,    interval:8,  required:8,  default_dose:15,   max_dose:0,    dose_units: :mg,   emoji:"1F480")
+    @meds[:morphine_bt] = Med.new(name: :morphine_bt, interval:8,  required:48, default_dose:7.5,  max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:baclofen]    = Med.new(name: :baclofen,    interval:4,  required:6,  default_dose:7.5,  max_dose:0,    dose_units: :mg,   emoji:"26A1")
+    @meds[:esgic]       = Med.new(name: :esgic,       interval:4,  required:24, default_dose:1,    max_dose:0,    dose_units: :unit, emoji:"1F915")
+    @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  max_dose:300,  dose_units: :mg,   emoji:"1F9E0")
+    @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, max_dose:0.25, dose_units: :mg,   emoji:"1F630")
 
-    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  dose_units: :mg,   emoji:"1F9B4")
-    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  dose_units: :mg,   emoji:"26FD")
-    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, dose_units: :mg,   emoji:"1FA78")
-    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   dose_units: :mg,   emoji:"1F48A")
-    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, dose_units: :iu,   emoji:"1F48A")
-    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, dose_units: :mg,   emoji:"1F48A")
+    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:750, dose_units: :mg,   emoji:"1F9B4")
+    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  max_dose:2000, dose_units: :mg,   emoji:"26FD")
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, max_dose:52.5, dose_units: :mg,   emoji:"1FA78")
+    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, max_dose:0,    dose_units: :iu,   emoji:"1F48A")
+    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, max_dose:0,    dose_units: :mg,   emoji:"1F48A")
   end
 
   # [
