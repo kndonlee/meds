@@ -78,7 +78,9 @@ end
 #pp db_results_parsed
 
 db_results_parsed.each do |r|
-  puts "========"
-  puts r[5]
+  if r[5] =~ /^Total/
+    puts "========"
+    puts r[5]
+  end
 end
 

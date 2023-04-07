@@ -10,7 +10,7 @@ while true; do
   if [[ $mode = "BASH" ]]; then
     ./meds.sh
   elif [[ $mode = "RUBY" ]]; then
-    ./meds.rb
+    ./meds_runner.rb
   fi
 
   sleep 5

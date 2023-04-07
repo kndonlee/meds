@@ -1,9 +1,41 @@
 #!/usr/bin/env ruby
 
 require 'sqlite3'
-require 'io/console'
+require 'io/wait'
 
+APP_PATH = File.dirname(__FILE__)
+$LOAD_PATH.unshift APP_PATH
+
+class ANSI
+  ESCAPE = "\u001b"
+  def self.start_alternate_buffer
+    "#{ESCAPE}[?1049h"
+  end
+
+  def self.end_alternative_buffer
+    "#{ESCAPE}[?1049l"
+  end
+
+  def self.hide_cursor
+    "#{ESCAPE}[?25l"
+  end
+
+  def self.show_cursor
+    "#{ESCAPE}[?25h"
+  end
+
+  def self.move_cursor(row, column)
+    # row & column are 1-indexed
+    print "#{ESCAPE}[#{row.to_s};#{column.to_s}H"
+  end
+
+  def self.clear
+    "#{ESCAPE}[2J"
+  end
+end
 class Colors
+  ESCAPE = "\u001b"
+
   @color_codes = {
     :black => 0,
     :red => 1,
@@ -16,18 +48,18 @@ class Colors
   }
 
   def self.xterm_color(i)
-    "\u001b[38;5;#{i}m"
+    "#{ESCAPE}[38;5;#{i}m"
   end
 
   def self.xterm_color_bg(i)
-    "\u001b[48;5;#{i}m"
+    "#{ESCAPE}[48;5;#{i}m"
   end
   def self.xterm_bg(i)
-    "\u001b[#{i}m"
+    "#{ESCAPE}[#{i}m"
   end
 
   def self.reset
-    "\u001b[0m"
+    "#{ESCAPE}[0m"
   end
 
   def self.method_missing(name, *args)
@@ -75,10 +107,17 @@ class Updater
   attr_reader :current_sha
   def initialize
     @current_sha = `git rev-parse HEAD`
+    @update_interval = 60
+    @last_dash_update = Time.now.to_i
   end
 
   def updated?
-    `git pull`
+    now = Time.now.to_i
+    if (now - @last_dash_update) > @update_interval
+      `git pull 2>&1 > /dev/null`
+      @last_dash_update = now
+    end
+
     new_sha = `git rev-parse HEAD`
 
     new_sha != @current_sha
@@ -392,7 +431,7 @@ class Med
   end
 
   def color_hrs
-    "#{Colors.blue_bold}hrs#{Colors.reset}"
+    "#{Colors.blue_bold}h#{Colors.reset}"
   end
 
   def color_elapsed
@@ -431,12 +470,20 @@ class Med
 end
 
 class MedDash
+  @@emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
 
   attr_accessor :meds
   def initialize
-    @version = "2.0.31"
+    @version = "2.1.0"
     @hostname = `hostname`.strip
     reset_meds
+
+    @updater = Updater.new
+    @last_dash_update = Time.now.to_i
+    @last_totals_update = Time.now.to_i
+    @mode = "d"
+    @display_dash = true
+    @display_totals = true
   end
 
   def last_update_time
@@ -444,7 +491,7 @@ class MedDash
   end
 
   def dashboard_header
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}#{Colors.reset}"
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals#{Colors.reset}"
   end
 
   def log_header
@@ -533,167 +580,256 @@ class MedDash
     end
   end
 
-end
-
-def blank_entry(size:0)
-  entry = ""
-  size.to_i.times do |i|
-    entry += " "
-  end
-
-  entry
-end
-
-def dummy_array(entries)
-  a = []
-  (1..entries).each do |i|
-    a << blank_entry
-  end
-  a
-end
-
-def pad_right(str, length)
-  temp_str = Colors.strip_color(str)
-  if temp_str.length < length
-    # If the string is shorter than the desired length,
-    # add spaces to the end until it is the desired length.
-    str += " " * (length - temp_str.length)
-  end
-  str
-end
-
-
-emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
-def emoji?(str)
-  str =~ emoji_regex
-end
-
-def line(color:242)
-  "#{Colors.send("c#{color}")}------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
-end
-
-updater = Updater.new
-md = MedDash.new
-
-loop do
-  system "clear"
-  md.reset_meds
-  db = IMessageChatDB.new
-  $errors = ""
-  $notes = ""
-
-  db.get.each do |message|
-    from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
-
-    next if message_body.start_with?("Totals")
-    next if message_body.start_with?("Edited to")
-
-    message_body.split("\n").each do |line|
-      case line
-      when /[0-9]+\s*[aApP]/ # 10p 10a 9a
-      when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
-      when /^\s*$/ # empty line
-      when /^\s*[A-Za-z+]+\s*$/ # morphine
-        md.add_med(med:line.strip, epoch_time:message_epoch)
-      when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
-        md.add_med(med:$3, epoch_time:message_epoch, dose: $1)
-      when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
-        md.add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
-      when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
-        md.add_med(med:$2, epoch_time:message_epoch, dose: $1)
-      when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
-        # ignore
-      when /^[Nn]ote/
-        $notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
-      when /^Laughed at/
-      when /^Loved/
-      when /^Liked/
-      when emoji_regex
-        # ignore
-      else
-        $errors += "parse_error: #{line}\n"
-      end
-    end
-  end
-
-  puts md.dashboard_header
-  puts
-  md.meds.each_pair do |med, log|
-    if med == :taurine
-      puts line(color:240)
-    elsif  med == :magnesium || med == :esgic
-      puts
+  def blank_entry(size:0)
+    entry = ""
+    size.to_i.times do |i|
+      entry += " "
     end
 
-    puts "#{sprintf("%-12s", med)} #{log}"
+    entry
   end
 
-  puts line(color:250)
-  puts md.log_header
-
-  log_records = []
-  md.meds.each_pair do |med, log|
-    log_summary_yesterday = log.list_yesterday_to_s
-    log_list = log.list_to_s
-
-    record = ""
-    record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
-    record += "#{log_list}" unless log_list.empty?
-
-    unless record.empty?
-      record = "#{log.emoji} #{med}\n#{record}"
-      log_records << record
+  def dummy_array(entries)
+    a = []
+    (1..entries).each do |i|
+      a << blank_entry
     end
-
-    log_records
+    a
   end
 
-  max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
+  def pad_right(str, length)
+    temp_str = Colors.strip_color(str)
+    if temp_str.length < length
+      # If the string is shorter than the desired length,
+      # add spaces to the end until it is the desired length.
+      str += " " * (length - temp_str.length)
+    end
+    str
+  end
+  def emoji?(str)
+    str =~ @@emoji_regex
+  end
 
-  log_columns = 6
-  log_records.each_slice(log_columns) do |slice|
-    a = slice.map{ |s| s.split("\n") }
+  def line(color:242)
+    "#{Colors.send("c#{color}")}-------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
+  end
 
-    # zip truncates based on the shortest array
-    # add empty array entries to equalize all arrays to be zipped
-    max_rows = a.max_by(&:length).length
-    a.each do |array|
-      while array.length <= max_rows
-        array << blank_entry(size: max_col_width)
+  def dash
+    s = ""
+    reset_meds
+    db = IMessageChatDB.new
+    @errors = ""
+    @notes = ""
+
+    db.get.each do |message|
+      from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
+
+      next if message_body.start_with?("Totals")
+      next if message_body.start_with?("Edited to")
+
+      message_body.split("\n").each do |line|
+        case line
+        when /[0-9]+\s*[aApP]/ # 10p 10a 9a
+        when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
+        when /^\s*$/ # empty line
+        when /^\s*[A-Za-z+]+\s*$/ # morphine
+          add_med(med:line.strip, epoch_time:message_epoch)
+        when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
+          add_med(med:$3, epoch_time:message_epoch, dose: $1)
+        when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
+          add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
+        when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
+          add_med(med:$2, epoch_time:message_epoch, dose: $1)
+        when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
+          # ignore
+        when /^[Nn]ote/
+          @notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
+        when /^Laughed at/
+        when /^Loved/
+        when /^Liked/
+        when @@emoji_regex
+          # ignore
+        else
+          @errors += "parse_error: #{line}\n"
+        end
       end
     end
 
-    zipped_array = []
-    a.each_with_index do  |arr, i|
-      if i == 0
-        zipped_array = arr.map{|a| [a]}
-      else
-        temp_array = zipped_array.zip(arr)
-        zipped_array = temp_array.map(&:flatten)
+    s += "#{dashboard_header}\n\n"
+
+    meds.each_pair do |med, log|
+      if med == :taurine
+        s += "#{line(color:240)}\n"
+      elsif  med == :magnesium || med == :esgic
+        s += "\n"
+      end
+
+      s += "#{sprintf("%-12s", med)} #{log}\n"
+    end
+
+    s += "#{line(color: 250)}\n"
+    s += "#{log_header}\n"
+
+    log_records = []
+    meds.each_pair do |med, log|
+      log_summary_yesterday = log.list_yesterday_to_s
+      log_list = log.list_to_s
+
+      record = ""
+      record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
+      record += "#{log_list}" unless log_list.empty?
+
+      unless record.empty?
+        record = "#{log.emoji} #{med}\n#{record}"
+        log_records << record
+      end
+
+      log_records
+    end
+
+    max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
+
+    log_columns = 6
+    log_records.each_slice(log_columns) do |slice|
+      a = slice.map{ |s| s.split("\n") }
+
+      # zip truncates based on the shortest array
+      # add empty array entries to equalize all arrays to be zipped
+      max_rows = a.max_by(&:length).length
+      a.each do |array|
+        while array.length <= max_rows
+          array << blank_entry(size: max_col_width)
+        end
+      end
+
+      zipped_array = []
+      a.each_with_index do  |arr, i|
+        if i == 0
+          zipped_array = arr.map{|a| [a]}
+        else
+          temp_array = zipped_array.zip(arr)
+          zipped_array = temp_array.map(&:flatten)
+        end
+      end
+
+      zipped_array.each do |row|
+        array = row.map{|r| pad_right(r, max_col_width)}
+        if row[0] =~ @@emoji_regex
+          s += "#{array.join(" ")}\n"
+        else
+          s += "#{array.join("  ")}\n"
+        end
       end
     end
 
-    zipped_array.each do |row|
-      array = row.map{|r| pad_right(r, max_col_width)}
-      if row[0] =~ emoji_regex
-        puts array.join(" ")
-      else
-        puts array.join("  ")
-      end
+    s += "#{line(color:250)}\n"
+    unless @notes.empty?
+      s += "#{Colors.yellow}Notes#{Colors.reset}\n"
+      s += "#{@notes}\n"
+    end
+
+    unless @errors.empty?
+      s += "#{Colors.yellow}Errors#{Colors.reset}\n"
+      s += "#{@errors}\n"
+    end
+
+    s
+  end
+
+  def dash_update_interval
+    15
+  end
+
+  def dash_loop
+    now = Time.now.to_i
+
+    if (now - @last_dash_update) > dash_update_interval || @display_dash
+      @display_dash = false
+      print ANSI.clear
+      ANSI.move_cursor(1,1)
+      puts dash
+      @last_dash_update = now
+    end
+
+    exit if @updater.updated?
+  end
+
+  def totals
+    dir_path = "#{APP_PATH}/totals"
+    files = Dir.children(dir_path).sort.last(2)
+
+    s = ""
+    s += "#{dashboard_header}\n\n"
+
+    files.each do |f|
+      s += "#{File.read("#{dir_path}/#{f}")}\n"
+    end
+
+    s
+  end
+
+  def totals_loop
+    now = Time.now.to_i
+
+    if (now - @last_totals_update) > 3600 || @display_totals
+      @display_totals = false
+      print ANSI.clear
+      ANSI.move_cursor(1,1)
+      puts totals
+      @last_totals_update = now
     end
   end
 
-  puts line(color:250)
-  unless $notes.empty?
-    puts "#{Colors.yellow}Notes#{Colors.reset}"
-    puts $notes
+  def char_if_pressed
+    begin
+      system("stty raw -echo") # turn raw input on
+      c = nil
+      if STDIN.ready?
+        c = STDIN.getc
+      end
+      c.chr if c
+    ensure
+      system "stty -raw echo" # turn raw input off
+    end
   end
 
-  unless $errors.empty?
-    puts "#{Colors.yellow}Errors#{Colors.reset}"
-    puts $errors
+  def run
+    print ANSI.start_alternate_buffer
+    print ANSI.hide_cursor
+
+    begin
+      loop do
+        c = char_if_pressed
+        case c
+        when "d"
+          @mode = "d"
+          @display_dash = true
+        when "t"
+          @mode = "t"
+          @display_totals = true
+        end
+
+        case @mode
+        when "d"
+          dash_loop
+        when "t"
+          totals_loop
+        end
+
+        # sleep 1
+        # if input == "\r" || input == "\n"  # Detect the Enter key
+        #   break
+        # else
+        #   user_input << input
+        # end
+      end
+    ensure
+      print ANSI.clear
+      print ANSI.end_alternative_buffer
+      print ANSI.show_cursor
+    end
   end
 
-  break if updater.updated?
-  sleep(15)
 end
+
+
