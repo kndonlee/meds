@@ -2,6 +2,7 @@
 
 require 'sqlite3'
 require 'io/wait'
+require 'io/console'
 
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
@@ -474,7 +475,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.1"
+    @version = "2.1.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -781,15 +782,26 @@ class MedDash
   end
 
   def char_if_pressed
+    c = nil
+
     begin
-      system("stty raw -echo") # turn raw input on
-      c = nil
-      if STDIN.ready?
-        c = STDIN.getc
+      # Set STDIN to raw mode
+      STDIN.raw do |stdin|
+        stdin.echo = false
+
+        # Check if input is available
+        if IO.select([STDIN], nil, nil, 0)
+          # Read a single character from STDIN
+          c = STDIN.getc
+        end
       end
+
+      # Convert the character code to a string if a character was read
       c.chr if c
     ensure
-      system "stty -raw echo" # turn raw input off
+      # Reset STDIN to normal mode
+      STDIN.echo = true
+      STDIN.cooked!
     end
   end
 
