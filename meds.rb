@@ -489,7 +489,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.5"
+    @version = "2.1.6"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -527,7 +527,7 @@ class MedDash
     @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:12, default_dose:0.25, max_dose:0.25, dose_units: :mg,   emoji:"1F630")
 
     @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  max_dose:0,    dose_units: :mg,   emoji:"1F48A")
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:750, dose_units: :mg,   emoji:"1F9B4")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:2000, dose_units: :mg,   emoji:"1F9B4")
     @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  max_dose:2000, dose_units: :mg,   emoji:"26FD")
     @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, max_dose:52.5, dose_units: :mg,   emoji:"1FA78")
     @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
