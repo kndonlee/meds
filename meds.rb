@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 
+require 'date'
 require 'sqlite3'
 require 'io/wait'
 require 'io/console'
+require 'json'
 
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
@@ -34,6 +36,7 @@ class ANSI
     "#{ESCAPE}[2J"
   end
 end
+
 class Colors
   ESCAPE = "\u001b"
 
@@ -248,7 +251,7 @@ class Med
     end
   end
 
-  attr_reader :emoji
+  attr_reader :emoji, :dose_units
   def initialize(name:, interval:, required:true, default_dose:, dose_units:, emoji:)
     @name = name
     @interval = interval
@@ -359,7 +362,7 @@ class Med
   end
 
   def wait_s
-    "#{Colors.green}wait#{Colors.reset}"
+    "#{Colors.c10}wait#{Colors.reset}"
   end
 
   def optional?
@@ -475,7 +478,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.2"
+    @version = "2.1.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -485,6 +488,7 @@ class MedDash
     @mode = "d"
     @display_dash = true
     @display_totals = true
+    @save_totals = false
   end
 
   def last_update_time
@@ -755,6 +759,39 @@ class MedDash
     exit if @updater.updated?
   end
 
+  def save_totals
+    dir_path = "#{APP_PATH}/totals"
+    yesterday_date = Date.today.prev_day.strftime('%Y-%m-%d')
+    yesterday_file = "#{dir_path}/#{yesterday_date}"
+
+    unless File.exist?(yesterday_file)
+
+      puts "saving totals"
+
+      save_data = {}
+      save_data[:date] = yesterday_date
+      save_data[:totals] = []
+
+      meds.each_pair do |med, log|
+        totals_data = {}
+        totals_data[:med] = med
+        totals_data[:total_dose] = log.total_dose_yesterday
+        totals_data[:dose_units] = log.dose_units
+        save_data[:totals] << totals_data
+      end
+
+      s = JSON.dump(save_data)
+
+      begin
+        File.write(yesterday_file, s)
+        @save_totals = false
+      rescue => exception
+        puts "Error saving yesterday totals to #{yesterday_file}: #{exception.message}"
+      end
+    end
+
+  end
+
   def totals
     dir_path = "#{APP_PATH}/totals"
     files = Dir.children(dir_path).sort.last(2)
@@ -819,6 +856,8 @@ class MedDash
         when "t"
           @mode = "t"
           @display_totals = true
+        when "s"
+          @save_totals = true
         end
 
         case @mode
@@ -828,12 +867,9 @@ class MedDash
           totals_loop
         end
 
-        # sleep 1
-        # if input == "\r" || input == "\n"  # Detect the Enter key
-        #   break
-        # else
-        #   user_input << input
-        # end
+        if Time.now.hour == 5 || @save_totals
+          save_totals
+        end
       end
     ensure
       print ANSI.clear
