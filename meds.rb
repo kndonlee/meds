@@ -116,11 +116,11 @@ class Updater
     if (now - @last_dash_update) > @update_interval
       `git pull 2>&1 > /dev/null`
       @last_dash_update = now
+      new_sha = `git rev-parse HEAD`
+      return new_sha != @current_sha
     end
 
-    new_sha = `git rev-parse HEAD`
-
-    new_sha != @current_sha
+    return false
   end
 end
 
@@ -474,7 +474,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.0"
+    @version = "2.1.1"
     @hostname = `hostname`.strip
     reset_meds
 
