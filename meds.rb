@@ -805,7 +805,7 @@ class MedDash
 
   def totals
     dir_path = "#{APP_PATH}/totals"
-    files = Dir.children(dir_path).sort.last(2)
+    files = Dir.children(dir_path).sort.last(5)
 
     s = ""
     s += "#{dashboard_header}\n\n"
