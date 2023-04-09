@@ -416,7 +416,7 @@ class Med
 
   def last_dose_s
     if last_dose.nil?
-      "#{Colors.cyan}NA     #{Colors.reset}"
+      "#{Colors.cyan}NA      #{Colors.reset}"
     else
       Med.epoch_to_time_sc(last_dose)
     end
@@ -489,7 +489,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.6"
+    @version = "2.1.7"
     @hostname = `hostname`.strip
     reset_meds
 
