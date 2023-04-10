@@ -485,11 +485,23 @@ class Med
 end
 
 class MedDash
+  @@emoji_ranges = [
+    0x1F600..0x1F64F, # Emoticons
+    0x1F300..0x1F5FF, # Misc Symbols and Pictographs
+    0x1F680..0x1F6FF, # Transport and Map
+    0x2600..0x26FF,   # Misc symbols
+    0x2700..0x27BF,   # Dingbats
+    0xFE00..0xFE0F,   # Variation Selectors
+    0x1F900..0x1F9FF, # Supplemental Symbols and Pictographs
+    0x1F1E6..0x1F1FF  # Regional indicators
+  ]
+
+
   @@emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.7"
+    @version = "2.1.8"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -622,8 +634,11 @@ class MedDash
     end
     str
   end
+
   def emoji?(str)
-    str =~ @@emoji_regex
+    str.codepoints.any? do |codepoint|
+      @@emoji_ranges.any? { |range| range.include?(codepoint) }
+    end
   end
 
   def line(color:242)
@@ -730,7 +745,7 @@ class MedDash
 
       zipped_array.each do |row|
         array = row.map{|r| pad_right(r, max_col_width)}
-        if row[0] =~ @@emoji_regex
+        if row.any? {|str| emoji?(str) }
           s += "#{array.join(" ")}\n"
         else
           s += "#{array.join("  ")}\n"
