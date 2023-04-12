@@ -501,7 +501,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.11"
+    @version = "2.1.12"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -665,7 +665,7 @@ class MedDash
         case line
         when /^[Nn]ote/
           puts "line case 9: #{line}" if ENV["DEBUG"] == "true"
-          @notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
+          @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
         when /[0-9]+\s*[aApP]/ # 10p 10a 9a
           puts "line case 1: #{line}" if ENV["DEBUG"] == "true"
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
