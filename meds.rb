@@ -501,7 +501,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.10"
+    @version = "2.1.11"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -663,25 +663,35 @@ class MedDash
 
       message_body.split("\n").each do |line|
         case line
+        when /^[Nn]ote/
+          puts "line case 9: #{line}" if ENV["DEBUG"] == "true"
+          @notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
         when /[0-9]+\s*[aApP]/ # 10p 10a 9a
+          puts "line case 1: #{line}" if ENV["DEBUG"] == "true"
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
+          puts "line case 2: #{line}" if ENV["DEBUG"] == "true"
         when /^\s*$/ # empty line
+          puts "line case 3: #{line}" if ENV["DEBUG"] == "true"
         when /^\s*[A-Za-z+]+\s*$/ # morphine
+          puts "line case 4: #{line}" if ENV["DEBUG"] == "true"
           add_med(med:line.strip, epoch_time:message_epoch)
         when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
+          puts "line case 5: #{line}" if ENV["DEBUG"] == "true"
           add_med(med:$3, epoch_time:message_epoch, dose: $1)
         when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
+          puts "line case 6: #{line}" if ENV["DEBUG"] == "true"
           add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
         when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
+          puts "line case 7: #{line}" if ENV["DEBUG"] == "true"
           add_med(med:$2, epoch_time:message_epoch, dose: $1)
         when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
+          puts "line case 8: #{line}" if ENV["DEBUG"] == "true"
           # ignore
-        when /^[Nn]ote/
-          @notes += "#{Time.at(message_epoch).strftime("%H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
         when /^Laughed at/
         when /^Loved/
         when /^Liked/
         when @@emoji_regex
+          puts "line case 10: #{line}" if ENV["DEBUG"] == "true"
           # ignore
         else
           @errors += "parse_error: #{line}\n"
