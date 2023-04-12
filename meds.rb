@@ -501,7 +501,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.9"
+    @version = "2.1.10"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -545,7 +545,8 @@ class MedDash
     @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
     @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  max_dose:0,    dose_units: :mg,   emoji:"1F48A")
     @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, max_dose:0,    dose_units: :iu,   emoji:"1F48A")
-    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:24, default_dose:1000, max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:48, default_dose:50,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:apigenin]    = Med.new(name: :apigenin,    interval:12, required:48, default_dose:25,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
   end
 
   # [
@@ -605,6 +606,8 @@ class MedDash
       @meds[:vitamin_d].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /theanine/i
       @meds[:l_theanine].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /apigenin/i
+      @meds[:apigenin].log(epoch_time:epoch_time, dose:dose, units:unit)
     end
   end
 
