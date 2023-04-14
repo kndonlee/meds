@@ -501,7 +501,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.12"
+    @version = "2.1.14"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -645,7 +645,7 @@ class MedDash
   end
 
   def line(color:242)
-    "#{Colors.send("c#{color}")}-------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
+    "#{Colors.send("c#{color}")}-----------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
   end
 
   def dash
@@ -733,7 +733,7 @@ class MedDash
 
     max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
 
-    log_columns = 6
+    log_columns = 7
     log_records.each_slice(log_columns) do |slice|
       a = slice.map{ |s| s.split("\n") }
 
