@@ -517,7 +517,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.16"
+    @version = "2.1.17"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -544,7 +544,7 @@ class MedDash
     s
   end
   def dashboard_header
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals  #{elapsed_color_guide}#{Colors.reset}"
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals [S]ave #{elapsed_color_guide}#{Colors.reset}"
   end
 
   def log_header
