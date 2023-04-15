@@ -450,20 +450,36 @@ class Med
   end
 
   def color_elapsed
-    e = elapsed_to_s
-    if e =~ /^00:/
-      "#{Colors.c70}#{elapsed_to_s}#{Colors.reset}"
-    elsif e =~ /^0[12]:/
-      "#{Colors.c71}#{elapsed_to_s}#{Colors.reset}"
-    elsif e =~ /^0[345]:/
-      "#{Colors.c72}#{elapsed_to_s}#{Colors.reset}"
-    elsif e =~ /^0[6789]:/
-      "#{Colors.c73}#{elapsed_to_s}#{Colors.reset}"
-    elsif e =~ /^1.:/
-      "#{Colors.c74}#{elapsed_to_s}#{Colors.reset}"
-    else #20 hrs and beyond
-      "#{Colors.c75}#{elapsed_to_s}#{Colors.reset}"
+    colors = [70,71,72,73,74,75,69,63,57,56,55,54,53]
+    required_s = @required * 3600
+    elapsed_s = elapsed
+
+    if elapsed_s > required_s
+      color_index = colors.length - 1
+    else
+      color_index = (((elapsed / required_s.to_f) * colors.length).round)
     end
+
+    if color_index >= colors.length
+      color_index = colors.length - 1
+    end
+
+    "#{Colors.send("c#{colors[color_index]}")}#{elapsed_to_s}#{Colors.reset}"
+
+    # e = elapsed_to_s
+    # if e =~ /^00:/
+    #   "#{Colors.c70}#{elapsed_to_s}#{Colors.reset}"
+    # elsif e =~ /^0[1]:/
+    #   "#{Colors.c71}#{elapsed_to_s}#{Colors.reset}"
+    # elsif e =~ /^0[345]:/
+    #   "#{Colors.c72}#{elapsed_to_s}#{Colors.reset}"
+    # elsif e =~ /^0[6789]:/
+    #   "#{Colors.c73}#{elapsed_to_s}#{Colors.reset}"
+    # elsif e =~ /^1.:/
+    #   "#{Colors.c74}#{elapsed_to_s}#{Colors.reset}"
+    # else #20 hrs and beyond
+    #   "#{Colors.c75}#{elapsed_to_s}#{Colors.reset}"
+    # end
   end
 
   def to_s
@@ -501,7 +517,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.15"
+    @version = "2.1.16"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -518,8 +534,17 @@ class MedDash
     Time.now.strftime("%a %Y-%m-%d %I:%M:%S%P")
   end
 
+  def elapsed_color_guide
+    s = ""
+    [70,71,72,73,74,75,69,63,57,56,55,54,53].each do |i|
+      code = i.to_s
+      s += "\u001b[48;5;#{code}m  "
+    end
+    s += "\u001b[0m"
+    s
+  end
   def dashboard_header
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals#{Colors.reset}"
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals  #{elapsed_color_guide}#{Colors.reset}"
   end
 
   def log_header
@@ -538,15 +563,15 @@ class MedDash
     @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  max_dose:300,   dose_units: :mg,   emoji:"1F9E0")
     @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:23, default_dose:0.25, max_dose:0.125, dose_units: :mg,   emoji:"1F630")
 
-    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  max_dose:2500, dose_units: :mg,   emoji:"1F48A")
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:1250, dose_units: :mg,   emoji:"1F9B4")
-    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  max_dose:1500, dose_units: :mg,   emoji:"26FD")
-    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, max_dose:52.5, dose_units: :mg,   emoji:"1FA78")
-    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:240,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  max_dose:600,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, max_dose:5000, dose_units: :iu,   emoji:"1F48A")
-    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:48, default_dose:50,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
-    @meds[:apigenin]    = Med.new(name: :apigenin,    interval:12, required:48, default_dose:25,   max_dose:0,    dose_units: :mg,   emoji:"1F48A")
+    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  max_dose:2500,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:1250,  dose_units: :mg,   emoji:"1F9B4")
+    @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:5,  default_dose:500,  max_dose:1500,  dose_units: :mg,   emoji:"26FD")
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   emoji:"1FA78")
+    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:240,   dose_units: :mg,   emoji:"1F48A")
+    @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  max_dose:600,   dose_units: :mg,   emoji:"1F48A")
+    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, max_dose:5000,  dose_units: :iu,   emoji:"1F48A")
+    @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:48, default_dose:50,   max_dose:0,     dose_units: :mg,   emoji:"1F48A")
+    @meds[:apigenin]    = Med.new(name: :apigenin,    interval:12, required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   emoji:"1F48A")
   end
 
   # [

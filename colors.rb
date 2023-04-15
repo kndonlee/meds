@@ -17,3 +17,12 @@ puts
   end
   puts "\u001b[0m"
 end
+
+puts
+
+[70, 71, 72,73,74,75,69, 63,57,56,55,54,53].each do |i|
+  code = i.to_s
+  print "\u001b[48;5;#{code}m #{code.ljust(4)}"
+  puts "\u001b[0m"
+
+end
