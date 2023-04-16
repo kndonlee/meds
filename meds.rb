@@ -517,7 +517,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.1"
+    @version = "2.2.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -590,13 +590,14 @@ class MedDash
     @meds[:lyrica]      = Med.new(name: :lyrica,      interval:12, required:12, default_dose:150,  max_dose:300,   dose_units: :mg,   emoji:"1F9E0")
     @meds[:xanax]       = Med.new(name: :xanax,       interval:12, required:23, default_dose:0.25, max_dose:0.125, dose_units: :mg,   emoji:"1F630")
 
-    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:5,  default_dose:500,  max_dose:2500,  dose_units: :mg,   emoji:"1F48A")
-    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:5,  default_dose:250,  max_dose:1250,  dose_units: :mg,   emoji:"1F9B4")
+    @meds[:taurine]     = Med.new(name: :taurine,     interval:3,  required:4,  default_dose:500,  max_dose:5000,  dose_units: :mg,   emoji:"1F48A")
+    @meds[:calcium]     = Med.new(name: :calcium,     interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   emoji:"1F9B4")
+    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:4,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   emoji:"1FA78")
+    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:3,  required:4,  default_dose:1000, max_dose:5000,  dose_units: :iu,   emoji:"1F48A")
+
     @meds[:msm]         = Med.new(name: :msm,         interval:3,  required:3,  default_dose:500,  max_dose:1500,  dose_units: :mg,   emoji:"26FD")
-    @meds[:iron]        = Med.new(name: :iron,        interval:3,  required:5,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   emoji:"1FA78")
-    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:6,  required:6,  default_dose:48,   max_dose:240,   dose_units: :mg,   emoji:"1F48A")
+    @meds[:magnesium]   = Med.new(name: :magnesium,   interval:3,  required:3,  default_dose:48,   max_dose:240,   dose_units: :mg,   emoji:"1F48A")
     @meds[:nac]         = Med.new(name: :nac,         interval:24, required:24, default_dose:600,  max_dose:600,   dose_units: :mg,   emoji:"1F48A")
-    @meds[:vitamin_d]   = Med.new(name: :vitamin_d,   interval:24, required:24, default_dose:1000, max_dose:5000,  dose_units: :iu,   emoji:"1F48A")
     @meds[:l_theanine]  = Med.new(name: :l_theanine,  interval:12, required:48, default_dose:50,   max_dose:0,     dose_units: :mg,   emoji:"1F48A")
     @meds[:apigenin]    = Med.new(name: :apigenin,    interval:12, required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   emoji:"1F48A")
   end
@@ -756,7 +757,7 @@ class MedDash
     meds.each_pair do |med, log|
       if med == :taurine
         s += "#{line(color:240)}\n"
-      elsif  med == :magnesium || med == :esgic
+      elsif  med == :msm || med == :esgic
         s += "\n"
       end
 
