@@ -5,6 +5,7 @@ require 'sqlite3'
 require 'io/wait'
 require 'io/console'
 require 'json'
+require 'eventmachine'
 
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
@@ -512,12 +513,11 @@ class MedDash
     0x1F1E6..0x1F1FF  # Regional indicators
   ]
 
-
   @@emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
 
   attr_accessor :meds
   def initialize
-    @version = "2.1.17"
+    @version = "2.1.18"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -528,6 +528,33 @@ class MedDash
     @display_dash = true
     @display_totals = true
     @save_totals = false
+    @muted = false
+
+    interval = 5
+    @timer_thread = Thread.new do
+      loop do
+        med_count = med_count_to_take
+        if med_count == 0
+          interval = 5
+        else
+          interval = 1800
+        end
+
+        unless @muted
+          system("say -v Daniel \"Kimberly, you now have #{med_count} meds due.\"")
+        end
+
+        sleep interval
+      end
+    end
+  end
+
+  def med_count_to_take
+    count = 0
+    @meds.each do |name, med|
+      count += 1 if med.due?
+    end
+    count
   end
 
   def last_update_time
@@ -544,7 +571,8 @@ class MedDash
     s
   end
   def dashboard_header
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals [S]ave #{elapsed_color_guide}#{Colors.reset}"
+    mute_string = @muted ? "un[M]ute" : "[M]ute"
+    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals [S]ave #{mute_string} #{elapsed_color_guide}#{Colors.reset}"
   end
 
   def log_header
@@ -922,6 +950,14 @@ class MedDash
           @display_totals = true
         when "s"
           @save_totals = true
+        when "m"
+          if @muted
+            @muted = false
+            @display_dash = true
+          else
+            @muted = true
+            @display_dash = true
+          end
         end
 
         case @mode
