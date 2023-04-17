@@ -520,7 +520,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.5"
+    @version = "2.2.6"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -973,7 +973,7 @@ class MedDash
 
   def totals
     dir_path = "#{APP_PATH}/totals"
-    files = Dir.children(dir_path).sort.last(12)
+    files = Dir.children(dir_path).sort.last(14)
 
     s = ""
     s += "#{dashboard_header}\n\n"
@@ -981,15 +981,15 @@ class MedDash
     records = []
     files.each do |f|
       data = JSON.parse(File.read("#{dir_path}/#{f}"))
-      s2 = "#{data["date"]}\n"
+      s2 = "#{Colors.c208}#{data["date"]}#{Colors.reset}\n"
       data["totals"].each do |med|
-        s2 += "#{med["med"]} #{med["total_dose"]} #{med["dose_units"]}\n"
+        s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
       end
       s2 += "\n"
       records << s2
     end
 
-    s += columnify(log_records:records.reverse, log_columns:6)
+    s += columnify(log_records:records.reverse, log_columns:7)
 
     s
   end
