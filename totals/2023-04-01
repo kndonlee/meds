@@ -1,16 +1,75 @@
-Totals 4/1 (sat)
-
-Taurine: 2.5g
-Calcium: 1.75g
-MSM: 1.5g
-Iron: 52.5mg
-
-Magnesium: 336mg
-NAC: 600mg
-VitaminD: 5000IU
-L-Theanine: 75mg
-
-Baclofen: 30mg
-Morphine: 45mg
-Esgic: 4
-Xanax: .375mg
+{
+  "date": "2023-04-01",
+  "totals": [
+    {
+      "med": "morphine",
+      "total_dose": 45,
+      "dose_units": "mg"
+    },
+    {
+      "med": "morphine_bt",
+      "total_dose": 0,
+      "dose_units": "mg"
+    },
+    {
+      "med": "baclofen",
+      "total_dose": 30,
+      "dose_units": "mg"
+    },
+    {
+      "med": "esgic",
+      "total_dose": 4,
+      "dose_units": "unit"
+    },
+    {
+      "med": "lyrica",
+      "total_dose": 300,
+      "dose_units": "mg"
+    },
+    {
+      "med": "xanax",
+      "total_dose": 0.375,
+      "dose_units": "mg"
+    },
+    {
+      "med": "taurine",
+      "total_dose": 2500,
+      "dose_units": "mg"
+    },
+    {
+      "med": "calcium",
+      "total_dose": 1750,
+      "dose_units": "mg"
+    },
+    {
+      "med": "msm",
+      "total_dose": 1500,
+      "dose_units": "mg"
+    },
+    {
+      "med": "iron",
+      "total_dose": 52.5,
+      "dose_units": "mg"
+    },
+    {
+      "med": "magnesium",
+      "total_dose": 336,
+      "dose_units": "mg"
+    },
+    {
+      "med": "nac",
+      "total_dose": 600,
+      "dose_units": "mg"
+    },
+    {
+      "med": "vitamin_d",
+      "total_dose": 5000,
+      "dose_units": "iu"
+    },
+    {
+      "med": "l_theanine",
+      "total_dose": 75,
+      "dose_units": "mg"
+    }
+  ]
+}
