@@ -517,7 +517,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.2"
+    @version = "2.2.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -538,7 +538,8 @@ class MedDash
           interval = 5
         else
           unless @muted
-            system("say -v Daniel \"Kimberly, you now have #{med_count} meds due.\"")
+            med_word = med_count == 1 ? "med" : "meds"
+            system("say -v Daniel \"Kimberly, you now have #{med_count} #{med_word} due.\"")
           end
           interval = 1800
         end
