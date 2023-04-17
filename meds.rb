@@ -502,6 +502,9 @@ class Med
 end
 
 class MedDash
+  SPEAKER_MUTED_EMOJI = "\u{1F507}"
+  SPEAKER_EMOJI = "\u{1F508}"
+
   @@emoji_ranges = [
     0x1F600..0x1F64F, # Emoticons
     0x1F300..0x1F5FF, # Misc Symbols and Pictographs
@@ -517,7 +520,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.3"
+    @version = "2.2.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -571,7 +574,7 @@ class MedDash
     s
   end
   def dashboard_header
-    mute_string = @muted ? "un[M]ute" : "[M]ute"
+    mute_string = @muted ? "un[M]ute #{SPEAKER_MUTED_EMOJI}" : "[M]ute #{SPEAKER_EMOJI}"
     "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals [S]ave #{mute_string} #{elapsed_color_guide}#{Colors.reset}"
   end
 
