@@ -520,13 +520,14 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.4"
+    @version = "2.2.7"
     @hostname = `hostname`.strip
     reset_meds
 
     @updater = Updater.new
     @last_dash_update = Time.now.to_i
     @last_totals_update = Time.now.to_i
+    @last_notes_update = Time.now.to_i
     @mode = "d"
     @display_dash = true
     @display_totals = true
@@ -540,10 +541,7 @@ class MedDash
         if med_count == 0
           interval = 5
         else
-          unless @muted
-            med_word = med_count == 1 ? "med" : "meds"
-            system("say -v Daniel \"Kimberly, you now have #{med_count} #{med_word} due.\"")
-          end
+          announce_meds_due unless @muted
           interval = 1800
         end
 
@@ -552,10 +550,16 @@ class MedDash
     end
   end
 
+  def announce_meds_due
+    med_count = med_count_to_take
+    med_word = med_count == 1 ? "med" : "meds"
+    system("say -v Daniel \"Kimberly, you now have #{med_count} #{med_word} due.\"")
+  end
+
   def med_count_to_take
     count = 0
     @meds.each do |name, med|
-      count += 1 if med.due?
+      count += 1 if (med.due? && !med.done?)
     end
     count
   end
@@ -575,7 +579,16 @@ class MedDash
   end
   def dashboard_header
     mute_string = @muted ? "un[M]ute #{SPEAKER_MUTED_EMOJI}" : "[M]ute #{SPEAKER_EMOJI}"
-    "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}  #{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}  #{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname} #{Colors.c47}[D]ash [T]otals [S]ave #{mute_string} #{elapsed_color_guide}#{Colors.reset}"
+
+    last_update = "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}"
+    version = "#{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}"
+    host = "#{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}"
+    usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [T]otals [N]otes [S]ave [A]nnounce [Q]uit #{mute_string}"
+    elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
+
+    s = "#{last_update}  #{version}  #{host}\n"
+    s += "#{elapsed_key}    #{usage}#{Colors.reset}"
+    s
   end
 
   def log_header
@@ -705,6 +718,45 @@ class MedDash
     "#{Colors.send("c#{color}")}-----------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
   end
 
+  def columnify(log_records:, log_columns:7)
+    s = ""
+
+    max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
+
+    log_records.each_slice(log_columns) do |slice|
+      a = slice.map{ |s| s.split("\n") }
+
+      # zip truncates based on the shortest array
+      # add empty array entries to equalize all arrays to be zipped
+      max_rows = a.max_by(&:length).length
+      a.each do |array|
+        while array.length <= max_rows
+          array << blank_entry(size: max_col_width)
+        end
+      end
+
+      zipped_array = []
+      a.each_with_index do  |arr, i|
+        if i == 0
+          zipped_array = arr.map{|a| [a]}
+        else
+          temp_array = zipped_array.zip(arr)
+          zipped_array = temp_array.map(&:flatten)
+        end
+      end
+
+      zipped_array.each do |row|
+        array = row.map{|r| pad_right(r, max_col_width)}
+        if row.any? {|str| emoji?(str) }
+          s += "#{array.join(" ")}\n"
+        else
+          s += "#{array.join("  ")}\n"
+        end
+      end
+    end
+    s
+  end
+
   def dash
     s = ""
     reset_meds
@@ -823,7 +875,13 @@ class MedDash
       end
     end
 
-    s += "#{line(color:250)}\n"
+    s
+  end
+
+  def notes
+    s = ""
+    s += "#{dashboard_header}\n\n"
+
     unless @notes.empty?
       s += "#{Colors.yellow}Notes#{Colors.reset}\n"
       s += "#{@notes}\n"
@@ -837,6 +895,19 @@ class MedDash
     s
   end
 
+  def notes_loop
+    now = Time.now.to_i
+
+    print ANSI.clear if @display_notes
+
+    if (now - @last_notes_update) > 3600 || @display_notes
+      @display_notes = false
+      print ANSI.clear
+      ANSI.move_cursor(1,1)
+      puts notes
+      @last_notes_update = now
+    end
+  end
   def dash_update_interval
     15
   end
@@ -890,20 +961,31 @@ class MedDash
 
   def totals
     dir_path = "#{APP_PATH}/totals"
-    files = Dir.children(dir_path).sort.last(5)
+    files = Dir.children(dir_path).sort.last(14)
 
     s = ""
     s += "#{dashboard_header}\n\n"
 
+    records = []
     files.each do |f|
-      s += "#{File.read("#{dir_path}/#{f}")}\n"
+      data = JSON.parse(File.read("#{dir_path}/#{f}"))
+      s2 = "#{Colors.c208}#{data["date"]}#{Colors.reset}\n"
+      data["totals"].each do |med|
+        s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
+      end
+      s2 += "\n"
+      records << s2
     end
+
+    s += columnify(log_records:records.reverse, log_columns:7)
 
     s
   end
 
   def totals_loop
     now = Time.now.to_i
+
+    print ANSI.clear if @display_totals
 
     if (now - @last_totals_update) > 3600 || @display_totals
       @display_totals = false
@@ -952,8 +1034,13 @@ class MedDash
         when "t"
           @mode = "t"
           @display_totals = true
+        when "a"
+          announce_meds_due
         when "s"
           @save_totals = true
+        when "n"
+          @mode = "n"
+          @display_notes = true
         when "m"
           if @muted
             @muted = false
@@ -962,6 +1049,8 @@ class MedDash
             @muted = true
             @display_dash = true
           end
+        when "q"
+          exit
         end
 
         case @mode
@@ -969,6 +1058,8 @@ class MedDash
           dash_loop
         when "t"
           totals_loop
+        when "n"
+          notes_loop
         end
 
         if Time.now.hour == 5 || @save_totals
