@@ -253,6 +253,9 @@ class Med
   end
 
   attr_reader :emoji, :dose_units
+
+  @@meds = {}
+
   def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, emoji:)
     @name = name
     @interval = interval
@@ -263,6 +266,7 @@ class Med
 
     @dose_log = []
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
+    @@meds[name] = self
   end
 
   def normalize_dose(dose, dose_units)
@@ -376,7 +380,15 @@ class Med
   end
 
   def due?
-    elapsed > (@required * 3600)
+    if @name == :morphine
+      if @@meds[:morphine_bt].wait?
+        false
+      else
+        elapsed > (@required * 3600)
+      end
+    else
+      elapsed > (@required * 3600)
+    end
   end
 
   def wait?
@@ -520,7 +532,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.7"
+    @version = "2.2.8"
     @hostname = `hostname`.strip
     reset_meds
 
