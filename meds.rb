@@ -330,7 +330,12 @@ class Med
     if @dose_log.last.nil?
       nil
     else
-      @dose_log.select{|d| d.dose > 0}.last.epoch_time
+      doses = @dose_log.select{|d| d.dose > 0}
+      if doses.empty?
+        nil
+      else
+        doses.last.epoch_time
+      end
     end
   end
 
@@ -532,7 +537,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.2.9"
+    @version = "2.2.10"
     @hostname = `hostname`.strip
     reset_meds
 
