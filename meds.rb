@@ -830,7 +830,7 @@ class MedDash
     meds.each_pair do |med, log|
       if med == :taurine
         s += "#{line(color:240)}\n"
-      elsif  med == :msm || med == :lyrica
+      elsif  med == :msm || med == :esgic
         s += "\n"
       end
 
