@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.2"
+    @version = "2.3.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -631,7 +631,7 @@ class MedDash
     @meds[:iron]           = Med.new(name: :iron,           interval:3,  required:4,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   display:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, max_dose:3000,  dose_units: :iu,   display:true,  emoji:"1F48A")
 
-    @meds[:msm]            = Med.new(name: :msm,            interval:3,  required:3,  default_dose:500,  max_dose:2000,  dose_units: :mg,   display:true,  emoji:"26FD")
+    @meds[:msm]            = Med.new(name: :msm,            interval:3,  required:2.25, default_dose:500,  max_dose:2000,  dose_units: :mg,   display:true,  emoji:"26FD")
     @meds[:magnesium]      = Med.new(name: :magnesium,      interval:3,  required:3,  default_dose:48,   max_dose:192,   dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:nac]            = Med.new(name: :nac,            interval:24, required:24, default_dose:600,  max_dose:600,   dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:12, required:48, default_dose:50,   max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F48A")
