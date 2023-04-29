@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.1"
+    @version = "2.3.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -1026,9 +1026,12 @@ class MedDash
       data = JSON.parse(File.read("#{dir_path}/#{f}"))
       s2 = "#{Colors.c208}#{data["date"]}#{Colors.reset}\n"
       data["totals"].each do |med|
-        s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
+        if med["total_dose"] > 0
+          s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
+        end
       end
       s2 += "\n"
+
       records << s2
     end
 
