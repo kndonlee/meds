@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.3"
+    @version = "2.3.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -623,7 +623,7 @@ class MedDash
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:6,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:300,   dose_units: :mg,   display:true,  emoji:"1F9E0")
 
-    @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:24, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
+    @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:12, required:48, default_dose:0.25, max_dose:0.125, dose_units: :mg,   display:false, emoji:"1F630")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:5000,  dose_units: :mg,   display:true,  emoji:"1F48A")
@@ -631,7 +631,7 @@ class MedDash
     @meds[:iron]           = Med.new(name: :iron,           interval:3,  required:4,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   display:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, max_dose:3000,  dose_units: :iu,   display:true,  emoji:"1F48A")
 
-    @meds[:msm]            = Med.new(name: :msm,            interval:3,  required:2.25, default_dose:500,  max_dose:2000,  dose_units: :mg,   display:true,  emoji:"26FD")
+    @meds[:msm]            = Med.new(name: :msm,            interval:2.25, required:2.25, default_dose:500,  max_dose:2000,  dose_units: :mg,   display:true,  emoji:"26FD")
     @meds[:magnesium]      = Med.new(name: :magnesium,      interval:3,  required:3,  default_dose:48,   max_dose:192,   dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:nac]            = Med.new(name: :nac,            interval:24, required:24, default_dose:600,  max_dose:600,   dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:12, required:48, default_dose:50,   max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F48A")
