@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.5"
+    @version = "2.3.6"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -818,6 +818,7 @@ class MedDash
     db.get.each do |message|
       from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
 
+      next if message_body.nil?
       next if message_body.start_with?("Totals")
       next if message_body.start_with?("Edited to")
 
