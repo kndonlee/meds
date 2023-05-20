@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.6"
+    @version = "2.3.7"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -623,10 +623,10 @@ class MedDash
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:6,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:300,   dose_units: :mg,   display:true,  emoji:"1F9E0")
 
-    @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:12, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
+    @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:24, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:12, required:48, default_dose:0.25, max_dose:0.125, dose_units: :mg,   display:false, emoji:"1F630")
 
-    @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:5000,  dose_units: :mg,   display:true,  emoji:"1F48A")
+    @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:4000,  dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   display:true,  emoji:"1F9B4")
     @meds[:iron]           = Med.new(name: :iron,           interval:3,  required:4,  default_dose:10.5, max_dose:52.5,  dose_units: :mg,   display:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, max_dose:3000,  dose_units: :iu,   display:true,  emoji:"1F48A")
