@@ -626,7 +626,7 @@ class MedDash
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F9E0")
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
-    @meds[:xanax]          = Med.new(name: :xanax,          interval:12, required:48, default_dose:0.25, max_dose:0.125, dose_units: :mg,   display:true,  emoji:"1F630")
+    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:8,  default_dose:0.25, max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F630")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:4000,  dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   display:true,  emoji:"1F9B4")
