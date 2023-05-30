@@ -270,6 +270,10 @@ class Med
     @@meds[name] = self
   end
 
+  def match?(string)
+    @name.downcase.match?(string.downcase)
+  end
+
   def normalize_dose(dose, dose_units)
     if dose.to_s.include?("/")
       n, d = dose.split('/').map(&:to_i)
@@ -538,7 +542,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.12"
+    @version = "2.3.14"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -626,6 +630,7 @@ class MedDash
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F9E0")
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  emoji:"1F915")
+    @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:8,  default_dose:0.25, max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F630")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:4000,  dose_units: :mg,   display:true,  emoji:"1F48A")
@@ -649,6 +654,9 @@ class MedDash
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
+    @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
+    @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
+    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
   end
 
   # [
@@ -731,6 +739,19 @@ class MedDash
     when /propranolol/i
     when /propanolol/i
       @meds[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /marshmallow/i
+      @meds[:marshmallow_r].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /soma/i
+      @meds[:soma].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /ondansetron/i
+      @meds[:ondansetron].log(epoch_time:epoch_time, dose:dose, units:unit)
+    else
+      @meds.each do |med_name, med_entry|
+        if med_entry.match?(med)
+          med_entry.log(epoch_time:epoch_time, dose:dose, units:unit)
+          next
+        end
+      end
     end
   end
 
