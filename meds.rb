@@ -538,7 +538,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.11"
+    @version = "2.3.12"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -1089,6 +1089,20 @@ class MedDash
       loop do
         c = char_if_pressed
         case c
+        when " "
+          if @mode == "n"
+            @mode = "d"
+            @display_dash = true
+          elsif @mode == "d"
+            @mode = "t"
+            @display_totals = true
+          elsif @mode == "t"
+            @mode = "n"
+            @display_notes = true
+          else
+            @mode = "d"
+            @display_dash = true
+          end
         when "d"
           @mode = "d"
           @display_dash = true
@@ -1122,6 +1136,8 @@ class MedDash
         when "n"
           notes_loop
         end
+
+        sleep(0.1)
 
         if Time.now.hour == 5 || @save_totals
           save_totals
