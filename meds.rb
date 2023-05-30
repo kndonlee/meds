@@ -542,7 +542,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.15"
+    @version = "2.3.16"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -650,13 +650,13 @@ class MedDash
     @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:12, required:48, default_dose:1300, max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:epa]            = Med.new(name: :epa,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
-    @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
+    @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
     @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
-    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:false, emoji:"1F48A")
+    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:true,  emoji:"1F48A")
   end
 
   # [
