@@ -542,7 +542,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.16"
+    @version = "2.3.17"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -554,7 +554,7 @@ class MedDash
     @display_dash = true
     @display_totals = true
     @save_totals = false
-    @muted = false
+    @muted = true
 
     interval = 5
     @timer_thread = Thread.new do
@@ -581,7 +581,7 @@ class MedDash
   def med_count_to_take
     count = 0
     @meds.each do |name, med|
-      count += 1 if (med.due? && !med.done?)
+      count += 1 if (med.due? && !med.done? && med.display)
     end
     count
   end
