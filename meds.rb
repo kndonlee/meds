@@ -269,10 +269,15 @@ class Med
     @dose_log = []
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
     @@meds[name] = self
+    @skip = false
   end
 
   def match?(string)
-    @name.downcase.match?(string.downcase)
+    @name.downcase.match?(string.strip.downcase)
+  end
+
+  def skip_today
+    @skip = true
   end
 
   def normalize_dose(dose, dose_units)
@@ -411,7 +416,7 @@ class Med
   end
 
   def due_to_s
-    if done?
+    if done? || @skip
       done_s
     elsif optional?
       optl_s
@@ -543,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.19"
+    @version = "2.4.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -838,6 +843,15 @@ class MedDash
     s
   end
 
+  def skip(med, epoch)
+    @meds.each do |med_name, med_entry|
+      if med_entry.match?(med) && epoch > Med.last_5am_epoch
+        med_entry.skip_today
+        next
+      end
+    end
+  end
+
   def dash
     s = ""
     reset_meds
@@ -857,6 +871,9 @@ class MedDash
         when /^[Nn]ote/
           puts "line case 9: #{line}" if ENV["DEBUG"] == "true"
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
+        when /^[Ss]kip:\s*([A-Za-z()\s]+)$/
+          puts "line case 10: #{line}" if ENV["DEBUG"] == "true"
+          skip($1.strip, message_epoch)
         when /[0-9]+\s*[aApP]/ # 10p 10a 9a
           puts "line case 1: #{line}" if ENV["DEBUG"] == "true"
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
