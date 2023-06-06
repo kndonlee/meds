@@ -448,7 +448,7 @@ class Med
 
   # Summarize
   def list_yesterday_to_s
-    yesterday_doses = @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch}
+    yesterday_doses = @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch && dose.dose > 0}
 
     return "" if yesterday_doses.empty?
     #puts yesterday_doses.first.epoch_time
@@ -463,7 +463,7 @@ class Med
 
   def list_to_s
     s = ""
-    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch}.each do |d|
+    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch && d.dose > 0}.each do |d|
       s += "#{d.to_s}\n"
     end
     s
@@ -543,7 +543,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.3.18"
+    @version = "2.3.19"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -636,7 +636,7 @@ class MedDash
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
 
-    @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:4000,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
+    @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:6500,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9B4")
     @meds[:iron]           = Med.new(name: :iron,           interval:48, required:48, default_dose:10.5, max_dose:52.5,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, max_dose:3000,  dose_units: :iu,   display:true,  display_log:true,  emoji:"1F48A")
@@ -697,6 +697,12 @@ class MedDash
       end
     when /esgic/i
       @meds[:esgic].log(epoch_time:epoch_time, dose:dose, units:unit)
+      if (dose.nil?)
+        tylenol_dose = 325
+      else
+        tylenol_dose = dose * 325
+      end
+      @meds[:tylenol].log(epoch_time:epoch_time, dose:tylenol_dose, units:"mg")
     when /lyric/i
       @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /xanax/i
