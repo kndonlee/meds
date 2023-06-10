@@ -548,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.1"
+    @version = "2.4.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -711,7 +711,14 @@ class MedDash
       else
         tylenol_dose = dose * 325
       end
-      @meds[:tylenol].log(epoch_time:epoch_time, dose:tylenol_dose, units:"mg")
+
+      # we don't want esgic to push tylenol forward, so submit current esgic as last tylenol dose time
+      # should this be submitted as a 5am dose of the current day since we track the esgic anyway?
+      last_dose_time = @meds[:tylenol].last_dose
+      if last_dose_time.nil?
+        last_dose_time = epoch_time - (3600 * 4)
+      end
+      @meds[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
     when /lyric/i
       @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /xanax/i
