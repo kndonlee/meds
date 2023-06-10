@@ -548,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.2"
+    @version = "2.4.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -639,7 +639,7 @@ class MedDash
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:8,  default_dose:0.25, max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
-    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
+    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:6500,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9B4")
@@ -925,7 +925,7 @@ class MedDash
 
       if med == :taurine
         s += "#{line(color:240)}\n"
-      elsif  med == :msm || med == :esgic
+      elsif  med == :msm || med == :esgic || med == :azelastine
         s += "\n"
       end
 
