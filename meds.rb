@@ -663,7 +663,7 @@ class MedDash
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    # 137ug per spray, 2x per nostril = 548
+    # 137ug per spray, 2x per nostril = 548ug
     @meds[:azelastine]     = Med.new(name: :azelastine,     interval:24, required:48, default_dose:548,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
