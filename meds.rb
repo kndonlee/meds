@@ -548,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.4"
+    @version = "2.4.5"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -631,7 +631,7 @@ class MedDash
     #
     @meds = {}
     @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F480")
-    @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:8,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9E0")
 
@@ -660,14 +660,14 @@ class MedDash
     @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     # 137ug per spray, 2x per nostril = 548ug
     @meds[:azelastine]     = Med.new(name: :azelastine,     interval:24, required:48, default_dose:548,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
-    @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:false,  display_log:false, emoji:"1F48A")
   end
 
   # [
