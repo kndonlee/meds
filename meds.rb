@@ -761,6 +761,7 @@ class MedDash
     when /hydroxyzine/i
       @meds[:hydroxyzine].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /propranolol/i
+      @meds[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /propanolol/i
       @meds[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /marshmallow/i
