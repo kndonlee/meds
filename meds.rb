@@ -630,8 +630,8 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F480")
-    @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F480")
+    @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:8,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9E0")
 
