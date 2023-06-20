@@ -548,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.6"
+    @version = "2.4.7"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -640,6 +640,7 @@ class MedDash
     @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:8,  default_dose:0.25, max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24, required:24, default_dose:15,   max_dose:15,    dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  max_dose:6500,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  max_dose:1750,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9B4")
@@ -695,7 +696,8 @@ class MedDash
     case med
     when /morph/i
       if dose == "7.5"
-        @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
+        # @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
+        @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
       else
         @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
       end
