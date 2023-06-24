@@ -7,6 +7,8 @@ require 'io/console'
 require 'json'
 require 'eventmachine'
 
+require 'i_message_chat_db'
+
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
 
@@ -129,109 +131,6 @@ class Updater
   end
 end
 
-class IMessageChatDB
-
-  #@@query_history = 4 * 86400
-  @@query_history = 86400 * 2
-  @@reset_time= 5
-
-  def initialize
-    @db_path = "#{ENV['HOME']}/Library/Messages/chat.db"
-
-    unless File.readable?(@db_path)
-      raise "status=ERROR error=FILE_READ file=#{@db_path}"
-    end
-  end
-
-  def chat_id
-    app_path = File.dirname($PROGRAM_NAME)
-
-    chat_id_path = "#{app_path}/chatid"
-    if File.readable?(chat_id_path)
-      File.read(chat_id_path).strip
-    else
-      # donalds chatid
-      "chat574232935236064109"
-    end
-  end
-
-  def db_query
-    @query || (@query = "
-    SELECT
-      message.is_from_me,
-      chat.chat_identifier,
-      datetime (message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\"), \"unixepoch\", \"localtime\") AS message_date,
-      message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\") AS message_epoch,
-      strftime (\"%s\", \"now\") AS now_epoch,
-      message.text,
-      message.attributedBody
-    FROM
-      chat
-      JOIN chat_message_join ON chat. \"ROWID\" = chat_message_join.chat_id
-      JOIN message ON chat_message_join.message_id = message. \"ROWID\"
-    WHERE
-       chat.chat_identifier LIKE \"#{chat_id}\"
-       AND (now_epoch-message_epoch) <= #{@@query_history}
-    ORDER BY
-      message_date ASC")
-  end
-
-  def get
-    @db = SQLite3::Database.new(@db_path)
-    db_results = @db.execute(db_query)
-
-    db_results_parsed = db_results.map do |result|
-
-      if result[5] != nil
-        result[6] = nil
-        result
-      elsif result[6].nil?
-        result
-      else
-        attributed_body = result[6].force_encoding('UTF-8').encode('UTF-8', :invalid => :replace)
-
-        #puts "unicodebody: #{attributed_body}"
-
-        if attributed_body.include?("NSNumber")
-          attributed_body = attributed_body.split("NSNumber")[0]
-          if attributed_body.include?("NSString")
-            attributed_body = attributed_body.split("NSString")[1]
-            if attributed_body.include?("NSDictionary")
-              attributed_body = attributed_body.split("NSDictionary")[0]
-              attributed_body = attributed_body[6..-13]
-
-              if attributed_body =~ /^.[\u0000]/
-                result[5] = attributed_body.gsub(/^.[\u0000]/,'')
-              else
-                result[5] = attributed_body
-              end
-
-              result[6] = nil
-              result
-            end
-          end
-        end
-      end
-    end
-
-    @db.close
-
-    db_results_parsed.compact
-  end
-
-  def pretty_print
-    pp get
-  end
-
-  def to_s
-    str = ""
-    get.map do |r|
-      str += "========\n#{r[5]}\n"
-    end
-    str
-  end
-end
-
 class Med
   class Dose
     attr_accessor :epoch_time, :dose, :dose_units
@@ -270,10 +169,20 @@ class Med
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
     @@meds[name] = self
     @skip = false
+
+    @name_match = [@name.to_s]
+  end
+
+  def add_match_term(regex)
+    @name_match << regex
   end
 
   def match?(string)
-    @name.downcase.match?(string.strip.downcase)
+    @name_match.each do |regex|
+      return true if string.strip =~ /#{regex}/i
+    end
+
+    false
   end
 
   def skip_today
@@ -548,7 +457,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.8"
+    @version = "2.5.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -657,6 +566,7 @@ class MedDash
     @meds[:marrow]         = Med.new(name: :marrow,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
     @meds[:oyster]         = Med.new(name: :oyster,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
     @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:12, required:48, default_dose:1300, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:12, required:48, default_dose:420,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:epa]            = Med.new(name: :epa,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
@@ -668,7 +578,15 @@ class MedDash
     @meds[:azelastine]     = Med.new(name: :azelastine,     interval:24, required:48, default_dose:548,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
-    @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:false,  display_log:false, emoji:"1F48A")
+    @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:docusate]       = Med.new(name: :docusate,       interval:4,  required:4,  default_dose:100,  max_dose:300,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
+
+    # additional ways to match terms
+    @meds[:docusate].add_match_term("docusate sodium")
+    @meds[:azelastine].add_match_term("azelastine spray")
+    @meds[:veramyst].add_match_term("veramyst spray")
+    @meds[:morphine].add_match_term("morphine (er)")
+    @meds[:phosphatidyl_c].add_match_term("pc")
   end
 
   # [
@@ -772,6 +690,14 @@ class MedDash
       @meds[:soma].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /ondansetron/i
       @meds[:ondansetron].log(epoch_time:epoch_time, dose:dose, units:unit)
+    when /pc/i
+      if dose == "1/4"
+        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:105, units:"mg")
+      elsif dose == "1/2"
+        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:210, units:"mg")
+      else
+        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:dose)
+      end
     else
       return if med.match(/^L$/)
 
@@ -891,7 +817,7 @@ class MedDash
         when /^[Ss]kip:\s*([A-Za-z()\s]+)$/
           puts "line case 10: #{line}" if ENV["DEBUG"] == "true"
           skip($1.strip, message_epoch)
-        when /[0-9]+\s*[aApP]/ # 10p 10a 9a
+        when /[0-9]+\s*[aApP]\s*$/ # 10p 10a 9a
           puts "line case 1: #{line}" if ENV["DEBUG"] == "true"
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
           puts "line case 2: #{line}" if ENV["DEBUG"] == "true"
@@ -935,7 +861,7 @@ class MedDash
         s += "\n"
       end
 
-      s += "#{sprintf("%-12s", med)} #{log}\n"
+      s += "#{sprintf("%-14s", med)} #{log}\n"
     end
 
     s += "#{line(color: 250)}\n"
