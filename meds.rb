@@ -548,7 +548,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.4.7"
+    @version = "2.4.8"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -773,6 +773,8 @@ class MedDash
     when /ondansetron/i
       @meds[:ondansetron].log(epoch_time:epoch_time, dose:dose, units:unit)
     else
+      return if med.match(/^L$/)
+
       @meds.each do |med_name, med_entry|
         if med_entry.match?(med)
           med_entry.log(epoch_time:epoch_time, dose:dose, units:unit)
