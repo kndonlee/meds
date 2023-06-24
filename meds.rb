@@ -457,7 +457,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.5.0"
+    @version = "2.5.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -565,8 +565,8 @@ class MedDash
     @meds[:liver]          = Med.new(name: :liver,          interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
     @meds[:marrow]         = Med.new(name: :marrow,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
     @meds[:oyster]         = Med.new(name: :oyster,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
-    @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:12, required:48, default_dose:1300, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:12, required:48, default_dose:420,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:24, required:48, default_dose:1300, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24, required:48, default_dose:420,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:epa]            = Med.new(name: :epa,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
