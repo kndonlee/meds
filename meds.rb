@@ -457,7 +457,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.5.3"
+    @version = "2.5.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -580,6 +580,7 @@ class MedDash
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:docusate]       = Med.new(name: :docusate,       interval:4,  required:4,  default_dose:100,  max_dose:300,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
+    @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,  required:48, default_dose:400,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F4AE")
 
     # additional ways to match terms
     @meds[:docusate].add_match_term("docusate sodium")
@@ -587,6 +588,7 @@ class MedDash
     @meds[:veramyst].add_match_term("veramyst spray")
     @meds[:morphine].add_match_term("morphine (er)")
     @meds[:phosphatidyl_c].add_match_term("pc")
+    @meds[:valerian_root].add_match_term("valerian root")
   end
 
   # [
@@ -744,7 +746,7 @@ class MedDash
   end
 
   def line(color:242)
-    "#{Colors.send("c#{color}")}-----------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
+    "#{Colors.send("c#{color}")}----------------------------------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
   end
 
   def columnify(log_records:, log_columns:7)
@@ -861,7 +863,7 @@ class MedDash
         s += "\n"
       end
 
-      s += "#{sprintf("%-14s", med)} #{log}\n"
+      s += "#{log.emoji} #{sprintf("%-14s", med)} #{log}\n"
     end
 
     s += "#{line(color: 250)}\n"
@@ -888,7 +890,7 @@ class MedDash
 
     max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
 
-    log_columns = 7
+    log_columns = 8
     log_records.each_slice(log_columns) do |slice|
       a = slice.map{ |s| s.split("\n") }
 
