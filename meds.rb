@@ -131,6 +131,9 @@ class Updater
   end
 end
 
+$checkbox_emoji = ["2705".hex].pack("U")
+$cross_emoji = ["274C".hex].pack("U")
+
 class Med
   class Dose
     attr_accessor :epoch_time, :dose, :dose_units
@@ -151,7 +154,7 @@ class Med
     end
   end
 
-  attr_reader :emoji, :dose_units, :display, :display_log
+  attr_reader :emoji, :dose_units, :display, :display_log, :interval
 
   @@meds = {}
 
@@ -244,6 +247,23 @@ class Med
 
       "#{elapsed_hours}:#{elapsed_minutes}"
     end
+  end
+
+  def taken_today?
+    if @dose_log.last.nil?
+      return false
+    else
+      doses = @dose_log.select{|d| d.dose >= 0}
+      if doses.empty?
+        return false
+      else
+        if doses.last.epoch_time > Med.last_5am_epoch
+          return true
+        end
+      end
+    end
+
+    false
   end
 
   def last_dose
@@ -457,7 +477,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.5.5"
+    @version = "2.6.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -855,7 +875,16 @@ class MedDash
     s += "#{dashboard_header}\n\n"
 
     meds.each_pair do |med, log|
+      next if log.interval != 24
       next unless log.display
+
+      s += "#{log.taken_today? ? $checkbox_emoji : $cross_emoji} #{med}   "
+    end
+    s += "\n\n"
+
+    meds.each_pair do |med, log|
+      next unless log.display
+      next if log.interval == 24
 
       if med == :taurine
         s += "#{line(color:240)}\n"
