@@ -477,7 +477,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.6.2"
+    @version = "2.6.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -562,7 +562,7 @@ class MedDash
     @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:8,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
-    @meds[:robaxin]        = Med.new(name: :robaxin,        interval:6,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false,  emoji:"26A1")
+    @meds[:robaxin]        = Med.new(name: :robaxin,        interval:3,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9E0")
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  display_log:true,  emoji:"1F915")
