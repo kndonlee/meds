@@ -7,108 +7,13 @@ require 'io/console'
 require 'json'
 require 'eventmachine'
 
-require 'i_message_chat_db'
+require 'lib/i_message_chat_db'
+require 'lib/ansi'
+require 'lib/colors'
+require 'lib/med'
 
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
-
-class ANSI
-  ESCAPE = "\u001b"
-  def self.start_alternate_buffer
-    "#{ESCAPE}[?1049h"
-  end
-
-  def self.end_alternative_buffer
-    "#{ESCAPE}[?1049l"
-  end
-
-  def self.hide_cursor
-    "#{ESCAPE}[?25l"
-  end
-
-  def self.show_cursor
-    "#{ESCAPE}[?25h"
-  end
-
-  def self.move_cursor(row, column)
-    # row & column are 1-indexed
-    print "#{ESCAPE}[#{row.to_s};#{column.to_s}H"
-  end
-
-  def self.clear
-    "#{ESCAPE}[2J"
-  end
-end
-
-class Colors
-  ESCAPE = "\u001b"
-
-  @color_codes = {
-    :black => 0,
-    :red => 1,
-    :green => 2,
-    :yellow => 3,
-    :blue => 4,
-    :purple => 5,
-    :cyan => 6,
-    :white => 7,
-  }
-
-  def self.xterm_color(i)
-    "#{ESCAPE}[38;5;#{i}m"
-  end
-
-  def self.xterm_color_bg(i)
-    "#{ESCAPE}[48;5;#{i}m"
-  end
-  def self.xterm_bg(i)
-    "#{ESCAPE}[#{i}m"
-  end
-
-  def self.reset
-    "#{ESCAPE}[0m"
-  end
-
-  def self.method_missing(name, *args)
-    case name.to_s
-    when "reset"
-      ansi_escape_sequence = reset
-    when /^c(\d+)$/
-      ansi_escape_sequence = xterm_color($1)
-    when /^c(\d+)_bg$/
-      ansi_escape_sequence = xterm_color_bg($1)
-    when /^(\w+)_bg$/
-      i = @color_codes[$1.to_sym]
-      if i.nil?
-        ansi_escape_sequence = reset
-      else
-        ansi_escape_sequence = xterm_bg(i.to_i+40)
-      end
-    when /^(\w+)_bold$/
-      i = @color_codes[$1.to_sym]
-      if i.nil?
-        ansi_escape_sequence = reset
-      else
-        ansi_escape_sequence = xterm_color(i.to_i+8)
-      end
-    when /^(\w+)$/
-      i = @color_codes[$1.to_sym]
-      if i.nil?
-        ansi_escape_sequence = reset
-      else
-        ansi_escape_sequence = xterm_color(i)
-      end
-    else
-      ansi_escape_sequence = reset
-    end
-
-    ansi_escape_sequence
-  end
-
-  def self.strip_color(str)
-    str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
-  end
-end
 
 class Updater
   attr_reader :current_sha
@@ -134,330 +39,6 @@ end
 $checkbox_emoji = ["2705".hex].pack("U")
 $cross_emoji = ["274C".hex].pack("U")
 
-class Med
-  class Dose
-    attr_accessor :epoch_time, :dose, :dose_units
-    def initialize(epoch_time:, dose:, dose_units:)
-      @epoch_time = epoch_time
-      @dose_units = dose_units
-      @dose = dose.to_f
-    end
-
-    def yesterday?
-      @epoch_time > Med.last_5am_epoch_yesterday && @epoch_time < Med.last_5am_epoch
-    end
-
-    def to_s
-      yesterday = yesterday? ? "#{Colors.c72} [Y]#{Colors.reset}" : ""
-      t = Med.epoch_to_time_sc(epoch_time)
-      "#{t} #{Colors.c183}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}#{yesterday}"
-    end
-  end
-
-  attr_reader :emoji, :dose_units, :display, :display_log, :interval
-
-  @@meds = {}
-
-  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display:true, display_log: true, emoji:)
-    @name = name
-    @interval = interval
-    @required = required
-    @default_dose = default_dose
-    @dose_units = dose_units
-    @max_dose = max_dose
-    @display = display
-    @display_log = display_log
-
-    @dose_log = []
-    @emoji = [emoji.hex].pack("U") # convert to unicode emoji
-    @@meds[name] = self
-    @skip = false
-
-    @name_match = [@name.to_s]
-  end
-
-  def add_match_term(regex)
-    @name_match << regex
-  end
-
-  def match?(string)
-    @name_match.each do |regex|
-      return true if string.strip =~ /#{regex}/i
-    end
-
-    false
-  end
-
-  def skip_today
-    @skip = true
-  end
-
-  def normalize_dose(dose, dose_units)
-    if dose.to_s.include?("/")
-      n, d = dose.split('/').map(&:to_i)
-      normalized_dose = n.to_f / d
-    else
-      normalized_dose = dose.to_f
-    end
-
-    if dose_units.to_s.downcase == @dose_units.to_s
-      normalized_dose
-    elsif dose_units.to_s.strip.empty?
-      normalized_dose
-    elsif @dose_units.to_s.downcase == "mg" && dose_units.to_s.downcase == "g"
-      normalized_dose = normalized_dose * 1000
-    elsif @dose_units.to_s.downcase == "g" && dose_units.to_s.downcase == "mg"
-      normalized_dose = normalized_dose.to_f / 1000
-    else
-      puts "#{@name} unable to normalize dose from #{dose} #{dose_units} to #{@dose_units}"
-    end
-
-    normalized_dose
-  end
-
-  def log(epoch_time:, dose:nil, units:nil)
-    dose = dose.nil? ? @default_dose : dose
-    dose = normalize_dose(dose, units)
-
-    @dose_log.push(
-      Dose.new(
-        epoch_time: epoch_time,
-        dose: dose,
-        dose_units: @dose_units,
-      )
-    )
-  end
-
-  def elapsed
-    if last_dose.nil?
-      86400 * 2
-    else
-      (Time.now.to_i - last_dose).abs
-    end
-  end
-
-  def elapsed_to_s
-    elapsed_s = elapsed
-
-    if elapsed_s == 0
-      "00:00"
-    else
-      elapsed_hours = sprintf("%02d", (elapsed_s / 3600).to_i)
-      elapsed_minutes = sprintf("%02d", ((elapsed_s % 3600) / 60).to_i)
-
-      "#{elapsed_hours}:#{elapsed_minutes}"
-    end
-  end
-
-  def taken_today?
-    if @dose_log.last.nil?
-      return false
-    else
-      doses = @dose_log.select{|d| d.dose >= 0}
-      if doses.empty?
-        return false
-      else
-        if doses.last.epoch_time > Med.last_5am_epoch
-          return true
-        end
-      end
-    end
-
-    false
-  end
-
-  def last_dose
-    if @dose_log.last.nil?
-      nil
-    else
-      doses = @dose_log.select{|d| d.dose >= 0}
-      if doses.empty?
-        nil
-      else
-        doses.last.epoch_time
-      end
-    end
-  end
-
-  def total_dose_yesterday
-    @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch}.map(&:dose).sum
-  end
-
-  def total_dose
-    @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch}.map(&:dose).sum
-  end
-
-  def self.last_5am_epoch_yesterday
-    last_5am_epoch - 86400
-  end
-
-  def self.last_5am_epoch
-    now = Time.now
-    today_5am = Time.new(now.year, now.month, now.day, 5, 0, 0)
-
-    if now < today_5am
-      # if it's before 5am today, go back to yesterday at 5am
-      yesterday_5am = today_5am - 24 * 60 * 60
-      return yesterday_5am.to_i
-    else
-      return today_5am.to_i
-    end
-  end
-
-  def optl_s
-    "#{Colors.c67_bg}#{Colors.c184}Optl#{Colors.reset}"
-  end
-
-  def take_s
-    "#{Colors.red}TAKE#{Colors.reset}"
-  end
-
-  def wait_s
-    "#{Colors.c10}wait#{Colors.reset}"
-  end
-
-  def done_s
-    "#{Colors.c154}done#{Colors.reset}"
-  end
-
-  def optional?
-    elapsed > (@interval * 3600) && elapsed < (@required * 3600)
-  end
-
-  def due?
-    if @name == :morphine
-      if @@meds[:morphine_bt].wait?
-        false
-      else
-        elapsed > (@required * 3600)
-      end
-    else
-      elapsed > (@required * 3600)
-    end
-  end
-
-  def wait?
-    elapsed < (@interval * 3600)
-  end
-
-  def done?
-    total_dose >= @max_dose && @max_dose != 0
-  end
-
-  def due_to_s
-    if done? || @skip
-      done_s
-    elsif optional?
-      optl_s
-    elsif due?
-      take_s
-    elsif wait?
-      wait_s
-    else
-      optl_s
-    end
-  end
-
-  def self.epoch_to_time_s(e)
-    Time.at(e).strftime("%I:%M%P")
-  end
-
-  def self.epoch_to_time_sc(e)
-    time, meridien = Time.at(e).strftime("%I:%M %P").split(" ")
-    if meridien.include?("am")
-      #"#{Colors.c178}#{time}#{Colors.c208}#{meridien}#{Colors.reset}"
-      "#{Colors.c208}#{time}#{Colors.c210}#{meridien} #{Colors.reset}"
-    else
-      "#{Colors.purple}#{time}#{Colors.c169}#{meridien} #{Colors.reset}"
-    end
-  end
-
-  def last_dose_s
-    if last_dose.nil?
-      "#{Colors.cyan}NA      #{Colors.reset}"
-    else
-      Med.epoch_to_time_sc(last_dose)
-    end
-  end
-
-  # Summarize
-  def list_yesterday_to_s
-    yesterday_doses = @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch_yesterday && dose.epoch_time < Med.last_5am_epoch && dose.dose > 0}
-
-    return "" if yesterday_doses.empty?
-    #puts yesterday_doses.first.epoch_time
-    date = Time.at(yesterday_doses.first.epoch_time).strftime("%m/%d");
-    s = ""
-    yesterday_counts = yesterday_doses.group_by(&:dose).transform_values(&:count)
-    yesterday_counts.each do |dose, count|
-      s += "#{Colors.c72}#{sprintf("%-8s",date + " " + count.to_s + "x")} #{Colors.c183}#{dose} #{Colors.blue_bold}#{@dose_units}#{Colors.reset}\n"
-    end
-    s
-  end
-
-  def list_to_s
-    s = ""
-    @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch && d.dose > 0}.each do |d|
-      s += "#{d.to_s}\n"
-    end
-    s
-  end
-
-  def color_hrs
-    "#{Colors.blue_bold}h#{Colors.reset}"
-  end
-
-  def color_elapsed
-    colors = [70,71,72,73,74,75,69,63,57,56,55,54,53]
-    required_s = @required * 3600
-    elapsed_s = elapsed
-
-    if elapsed_s > required_s
-      color_index = colors.length - 1
-    else
-      color_index = (((elapsed / required_s.to_f) * colors.length).round)
-    end
-
-    if color_index >= colors.length
-      color_index = colors.length - 1
-    end
-
-    "#{Colors.send("c#{colors[color_index]}")}#{elapsed_to_s}#{Colors.reset}"
-
-    # e = elapsed_to_s
-    # if e =~ /^00:/
-    #   "#{Colors.c70}#{elapsed_to_s}#{Colors.reset}"
-    # elsif e =~ /^0[1]:/
-    #   "#{Colors.c71}#{elapsed_to_s}#{Colors.reset}"
-    # elsif e =~ /^0[345]:/
-    #   "#{Colors.c72}#{elapsed_to_s}#{Colors.reset}"
-    # elsif e =~ /^0[6789]:/
-    #   "#{Colors.c73}#{elapsed_to_s}#{Colors.reset}"
-    # elsif e =~ /^1.:/
-    #   "#{Colors.c74}#{elapsed_to_s}#{Colors.reset}"
-    # else #20 hrs and beyond
-    #   "#{Colors.c75}#{elapsed_to_s}#{Colors.reset}"
-    # end
-  end
-
-  def to_s
-    interval = sprintf("%2d", @interval)
-    required_formatted = sprintf("%2d", @required)
-    dose = sprintf("%6.1f", total_dose)
-    dose_y = sprintf("%6.1f", total_dose_yesterday)
-
-    last = "Last:#{last_dose_s}"
-    elapsed = "Elapsed:#{color_elapsed}"
-    due = "Due:#{due_to_s}"
-    every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
-    required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
-    total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
-    total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
-
-    "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{total} #{total_yesterday}"
-  end
-end
-
 class MedDash
   SPEAKER_MUTED_EMOJI = "\u{1F507}"
   SPEAKER_EMOJI = "\u{1F508}"
@@ -477,7 +58,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "2.6.3"
+    @version = "3.0.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -485,9 +66,11 @@ class MedDash
     @last_dash_update = Time.now.to_i
     @last_totals_update = Time.now.to_i
     @last_notes_update = Time.now.to_i
+    @last_log_update = Time.now.to_i
     @mode = "d"
     @display_dash = true
     @display_totals = true
+    @display_log = false
     @save_totals = false
     @muted = true
 
@@ -542,7 +125,7 @@ class MedDash
     last_update = "#{Colors.yellow_bold}Last Update:#{Colors.purple_bold}#{last_update_time}"
     version = "#{Colors.yellow_bold}Version:#{Colors.purple_bold}#{@version}"
     host = "#{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}"
-    usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [T]otals #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
+    usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [L]og [T]otals #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
     elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
 
     s = "#{last_update}  #{version}  #{host}\n"
@@ -559,7 +142,7 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F480")
+    @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:12, default_dose:15,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:8,  default_dose:7.5,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:3,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
@@ -818,12 +401,11 @@ class MedDash
     end
   end
 
-  def dash
-    s = ""
+  def crack_meds
     reset_meds
-    db = IMessageChatDB.new
     @errors = ""
     @notes = ""
+    db = IMessageChatDB.new
 
     db.get.each do |message|
       from_me, chat_id, message_time, message_epoch, current_epoch, message_body = message
@@ -872,8 +454,40 @@ class MedDash
         end
       end
     end
+  end
 
-    s += "#{dashboard_header}\n\n"
+  def log_dash(line_limit: 3, show_yesterday: false)
+    s = ""
+
+    log_records = []
+    meds.each_pair do |med, log|
+      next unless log.display_log
+
+      log_summary_yesterday = log.list_yesterday_to_s
+      log_list = log.list_to_s(limit: line_limit)
+
+      record = ""
+      if show_yesterday
+        record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
+      end
+      record += "#{log_list}" unless log_list.empty?
+
+      unless record.empty?
+        record = "#{log.emoji} #{med}\n#{record}"
+        log_records << record
+      end
+
+      log_records
+    end
+
+    s += columnify(log_records:log_records, log_columns:8)
+
+    s
+  end
+
+  def dash
+    crack_meds
+    s = "#{dashboard_header}\n\n"
 
     meds.each_pair do |med, log|
       next if log.interval != 24
@@ -898,62 +512,29 @@ class MedDash
 
     s += "#{line(color: 250)}\n"
     s += "#{log_header}\n"
-
-    log_records = []
-    meds.each_pair do |med, log|
-      next unless log.display_log
-
-      log_summary_yesterday = log.list_yesterday_to_s
-      log_list = log.list_to_s
-
-      record = ""
-      record += "#{log_summary_yesterday}" unless log_summary_yesterday.empty?
-      record += "#{log_list}" unless log_list.empty?
-
-      unless record.empty?
-        record = "#{log.emoji} #{med}\n#{record}"
-        log_records << record
-      end
-
-      log_records
-    end
-
-    max_col_width = Colors.strip_color(log_records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
-
-    log_columns = 8
-    log_records.each_slice(log_columns) do |slice|
-      a = slice.map{ |s| s.split("\n") }
-
-      # zip truncates based on the shortest array
-      # add empty array entries to equalize all arrays to be zipped
-      max_rows = a.max_by(&:length).length
-      a.each do |array|
-        while array.length <= max_rows
-          array << blank_entry(size: max_col_width)
-        end
-      end
-
-      zipped_array = []
-      a.each_with_index do  |arr, i|
-        if i == 0
-          zipped_array = arr.map{|a| [a]}
-        else
-          temp_array = zipped_array.zip(arr)
-          zipped_array = temp_array.map(&:flatten)
-        end
-      end
-
-      zipped_array.each do |row|
-        array = row.map{|r| pad_right(r, max_col_width)}
-        if row.any? {|str| emoji?(str) }
-          s += "#{array.join(" ")}\n"
-        else
-          s += "#{array.join("  ")}\n"
-        end
-      end
-    end
+    s += log_dash
 
     s
+  end
+
+  def log
+    crack_meds
+    s = "#{dashboard_header}\n\n"
+    s += log_dash(line_limit: 100, show_yesterday: true)
+    s
+  end
+
+  def log_loop
+    now = Time.now.to_i
+    print ANSI.clear if @display_log
+
+    if (now - @last_log_update) > 3600 || @display_log
+      @display_log = false
+      print ANSI.clear
+      ANSI.move_cursor(1,1)
+      puts log
+      @last_log_update = now
+    end
   end
 
   def notes
@@ -986,6 +567,7 @@ class MedDash
       @last_notes_update = now
     end
   end
+
   def dash_update_interval
     15
   end
@@ -1114,6 +696,9 @@ class MedDash
             @mode = "d"
             @display_dash = true
           elsif @mode == "d"
+            @mode = "l"
+            @display_log = true
+          elsif @mode == "l"
             @mode = "t"
             @display_totals = true
           elsif @mode == "t"
@@ -1126,6 +711,9 @@ class MedDash
         when "d"
           @mode = "d"
           @display_dash = true
+        when "l"
+          @mode = "l"
+          @display_log = true
         when "t"
           @mode = "t"
           @display_totals = true
@@ -1151,6 +739,8 @@ class MedDash
         case @mode
         when "d"
           dash_loop
+        when "l"
+          log_loop
         when "t"
           totals_loop
         when "n"
