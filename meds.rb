@@ -58,7 +58,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.0.1"
+    @version = "3.0.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -166,9 +166,10 @@ class MedDash
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,  required:48, default_dose:50,   max_dose:900,   dose_units: :mg,   display:true,  display_log:true,  emoji:"1FAB7")
     @meds[:apigenin]       = Med.new(name: :apigenin,       interval:12, required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
 
-    @meds[:liver]          = Med.new(name: :liver,          interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
+    @meds[:liver]          = Med.new(name: :liver,          interval:24, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F48A")
     @meds[:marrow]         = Med.new(name: :marrow,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
-    @meds[:oyster]         = Med.new(name: :oyster,         interval:12, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:false, display_log:false, emoji:"1F48A")
+    @meds[:oyster]         = Med.new(name: :oyster,         interval:24, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F48A")
+    @meds[:juice]          = Med.new(name: :juice,          interval:24, required:48, default_dose:1,    max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F48A")
     @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:24, required:48, default_dose:1300, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24, required:48, default_dose:420,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F9E0")
     @meds[:epa]            = Med.new(name: :epa,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
