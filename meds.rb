@@ -58,7 +58,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.0.3"
+    @version = "3.0.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -152,6 +152,7 @@ class MedDash
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:48, default_dose:500,  max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:48, default_dose:0.25, max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:propranolol]    = Med.new(name: :propranolol,    interval:4,  required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F497")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24, required:24, default_dose:15,   max_dose:15,    dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
 
@@ -177,7 +178,6 @@ class MedDash
     @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,  required:48, default_dose:25,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:propranolol]    = Med.new(name: :propranolol,    interval:12, required:48, default_dose:80,   max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F497")
     @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     # 137ug per spray, 2x per nostril = 548ug
@@ -186,7 +186,7 @@ class MedDash
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F4A6")
     @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:docusate]       = Med.new(name: :docusate,       interval:4,  required:4,  default_dose:100,  max_dose:300,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
-    @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,  required:48, default_dose:400,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F4AE")
+    @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,  required:48, default_dose:400,  max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F4AE")
 
     # additional ways to match terms
     @meds[:docusate].add_match_term("docusate sodium")
