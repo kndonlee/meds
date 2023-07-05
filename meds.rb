@@ -58,7 +58,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.1.0"
+    @version = "3.1.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -161,7 +161,7 @@ class MedDash
     @meds[:iron]           = Med.new(name: :iron,           interval:48, required:48, default_dose:10.5, half_life:5*3600,     max_dose:52.5,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, half_life:5*24*3600,  max_dose:3000,  dose_units: :iu,   display:true,  display_log:true,  emoji:"1F31E")
 
-    @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,default_dose:500,  half_life:48*3600,   max_dose:2000,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F30B")
+    @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,default_dose:500,  half_life:8*3600,    max_dose:2000,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F30B")
     @meds[:magnesium]      = Med.new(name: :magnesium,      interval:3,  required:3,  default_dose:48,   half_life:4*3600,    max_dose:192,   dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:nac]            = Med.new(name: :nac,            interval:23, required:24, default_dose:600,  half_life:5.6*3600,  max_dose:600,   dose_units: :mg,   display:true,  display_log:true,  emoji:"26FD")
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,  required:48, default_dose:50,   half_life:1.2*3600,  max_dose:900,   dose_units: :mg,   display:true,  display_log:true,  emoji:"1FAB7")
