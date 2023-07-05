@@ -58,7 +58,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.0.0"
+    @version = "3.0.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -350,7 +350,7 @@ class MedDash
   end
 
   def line(color:242)
-    "#{Colors.send("c#{color}")}----------------------------------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
+    "#{Colors.send("c#{color}")}--------------------------------------------------------------------------------------------------------------------------------------------------------------#{Colors.reset}"
   end
 
   def columnify(log_records:, log_columns:7)
