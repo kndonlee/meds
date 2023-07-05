@@ -2,11 +2,14 @@
 
 class Med
   class Dose
+
     attr_accessor :epoch_time, :dose, :dose_units
-    def initialize(epoch_time:, dose:, dose_units:)
+
+    def initialize(epoch_time:, dose:, dose_units:, half_life:)
       @epoch_time = epoch_time
       @dose_units = dose_units
       @dose = dose.to_f
+      @half_life = half_life
     end
 
     def yesterday?
@@ -18,13 +21,27 @@ class Med
       t = Med.epoch_to_time_sc(epoch_time)
       "#{t} #{Colors.c183}#{dose} #{Colors.blue_bold}#{dose_units}#{Colors.reset}#{yesterday}"
     end
+
+    def remaining_dose
+      time_elapsed = Time.now.to_i - @epoch_time # seconds
+      number_of_half_lives = time_elapsed / @half_life
+
+      if number_of_half_lives <= 5
+        remaining_dose = @dose * (0.5 ** number_of_half_lives)
+      else
+        remaining_dose = 0 # eliminated to 0 if greater than 5 half lives
+      end
+
+      remaining_dose
+    end
+
   end
 
   attr_reader :emoji, :dose_units, :display, :display_log, :interval
 
   @@meds = {}
 
-  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display:true, display_log: true, emoji:)
+  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display:true, display_log: true, emoji:, half_life:)
     @name = name
     @interval = interval
     @required = required
@@ -33,6 +50,7 @@ class Med
     @max_dose = max_dose
     @display = display
     @display_log = display_log
+    @half_life = half_life
 
     @dose_log = []
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
@@ -86,11 +104,12 @@ class Med
     dose = normalize_dose(dose, units)
 
     @dose_log.push(
-    Dose.new(
-    epoch_time: epoch_time,
-    dose: dose,
-    dose_units: @dose_units,
-    )
+      Dose.new(
+        epoch_time: epoch_time,
+        dose: dose,
+        dose_units: @dose_units,
+        half_life: @half_life
+      )
     )
   end
 
@@ -151,6 +170,11 @@ class Med
 
   def total_dose
     @dose_log.select { |dose| dose.epoch_time > Med.last_5am_epoch}.map(&:dose).sum
+  end
+
+  # calculated via elimination half lives
+  def remaining_dose
+    @dose_log.map(&:remaining_dose).sum
   end
 
   def self.last_5am_epoch_yesterday
@@ -324,9 +348,10 @@ class Med
     due = "Due:#{due_to_s}"
     every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
     required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
+    remaining = "Remaining:#{Colors.purple_bold}#{sprintf("%7.2f",remaining_dose)} #{Colors.blue_bold}#{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
 
-    "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{total} #{total_yesterday}"
+    "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{remaining} #{total} #{total_yesterday}"
   end
 end
