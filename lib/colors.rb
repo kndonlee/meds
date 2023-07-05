@@ -66,6 +66,10 @@ class Colors
   end
 
   def self.strip_color(str)
-    str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
+    if str.nil?
+      ""
+    else
+      str.gsub(/[\x00-\x1F]\[[0-9;]+m/,'')
+    end
   end
 end
