@@ -15,6 +15,9 @@ require 'lib/med'
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
 
+$DEBUG = ENV["DEBUG"] == "true"
+$HIDE_FORBIDDEN = ENV["HIDE_FORBIDDEN"] == "true"
+
 class Updater
   attr_reader :current_sha
   def initialize
@@ -58,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.1.3"
+    @version = "3.2.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -420,37 +423,37 @@ class MedDash
       message_body.split("\n").each do |line|
         case line
         when /^[Nn]ote/
-          puts "line case 9: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 9: #{line}" if $DEBUG
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
         when /^[Ss]kip:\s*([A-Za-z()\s]+)$/
-          puts "line case 10: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 10: #{line}" if $DEBUG
           skip($1.strip, message_epoch)
         when /[0-9]+\s*[aApP]\s*$/ # 10p 10a 9a
-          puts "line case 1: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 1: #{line}" if $DEBUG
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
-          puts "line case 2: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 2: #{line}" if $DEBUG
         when /^\s*$/ # empty line
-          puts "line case 3: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 3: #{line}" if $DEBUG
         when /^\s*[A-Za-z+]+\s*$/ # morphine
-          puts "line case 4: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 4: #{line}" if $DEBUG
           add_med(med:line.strip, epoch_time:message_epoch)
         when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
-          puts "line case 5: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 5: #{line}" if $DEBUG
           add_med(med:$3, epoch_time:message_epoch, dose: $1)
         when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
-          puts "line case 6: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 6: #{line}" if $DEBUG
           add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
         when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
-          puts "line case 7: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 7: #{line}" if $DEBUG
           add_med(med:$2, epoch_time:message_epoch, dose: $1)
         when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
-          puts "line case 8: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 8: #{line}" if $DEBUG
           # ignore
         when /^Laughed at/
         when /^Loved/
         when /^Liked/
         when @@emoji_regex
-          puts "line case 10: #{line}" if ENV["DEBUG"] == "true"
+          puts "line case 10: #{line}" if $DEBUG
           # ignore
         else
           @errors += "parse_error: #{line}\n"
@@ -465,6 +468,7 @@ class MedDash
     log_records = []
     meds.each_pair do |med, log|
       next unless log.display_log
+      next unless show?(med.to_s)
 
       log_summary_yesterday = log.list_yesterday_to_s
       log_list = log.list_to_s(limit: line_limit)
@@ -495,14 +499,16 @@ class MedDash
     meds.each_pair do |med, log|
       next if log.interval != 24
       next unless log.display
+      next unless show?(med.to_s)
 
       s += "#{log.taken_today? ? $checkbox_emoji : $cross_emoji} #{med}   "
     end
     s += "\n\n"
 
     meds.each_pair do |med, log|
-      next unless log.display
       next if log.interval == 24
+      next unless log.display
+      next unless show?(med.to_s)
 
       if med == :taurine
         s += "#{line(color:240)}\n"
@@ -622,6 +628,23 @@ class MedDash
 
   end
 
+  def show?(med)
+    return true unless $HIDE_FORBIDDEN
+
+    case med
+    when "morphine"
+      false
+    when "docusate"
+      false
+    when "soma"
+      false
+    when "xanax"
+      false
+    else
+      true
+    end
+  end
+
   def totals
     dir_path = "#{APP_PATH}/totals"
     files = Dir.children(dir_path).sort.last(14)
@@ -634,7 +657,7 @@ class MedDash
       data = JSON.parse(File.read("#{dir_path}/#{f}"))
       s2 = "#{Colors.c208}#{data["date"]}#{Colors.reset}\n"
       data["totals"].each do |med|
-        if med["total_dose"] > 0
+        if med["total_dose"] > 0 && show?(med["med"])
           s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
         end
       end
