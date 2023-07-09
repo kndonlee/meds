@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.7"
+    @version = "3.2.8"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -202,6 +202,7 @@ class MedDash
     @meds[:valerian_root].add_match_term("valerian root")
     @meds[:fish_eggs].add_match_term("fish egg")
     @meds[:calcium_aep].add_match_term("calcium aep")
+    @meds[:phys_thr].add_match_term("physical")
   end
 
   # [
