@@ -255,7 +255,7 @@ class MedDash
       if last_dose_time.nil?
         last_dose_time = epoch_time - (3600 * 4)
       end
-      puts "logging tylenol with dose #{tylenol_dose}"
+      puts "logging tylenol with dose #{tylenol_dose}" if $DEBUG
       @meds[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
     when /lyric/i
       @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
