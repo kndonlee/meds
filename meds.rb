@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.11"
+    @version = "3.2.12"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -131,7 +131,11 @@ class MedDash
     usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [L]og [T]otals #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
     elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
 
-    s = "#{last_update}  #{version}  #{host}\n"
+    if $HIDE_FORBIDDEN
+      s = "#{Colors.c70_bg}#{last_update}  #{version}  #{host}#{Colors.reset}\n"
+    else
+      s = "#{last_update}  #{version}  #{host}\n"
+    end
     s += "#{elapsed_key}    #{usage}#{Colors.reset}"
     s
   end
@@ -153,7 +157,7 @@ class MedDash
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display:true,  display_log:true,  emoji:"1F915")
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:48, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F915")
-    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:48, default_dose:0.25, half_life:11*3600,    max_dose:0,     dose_units: :mg,   display:false, display_log:true,  emoji:"1F630")
+    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:48, default_dose:0.25, half_life:11*3600,    max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   half_life:14.5*3600,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:4,  required:48, default_dose:80,   half_life:8*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F497")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
@@ -161,7 +165,7 @@ class MedDash
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  half_life:3600,       max_dose:6500,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  half_life:2*3600,     max_dose:1750,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9B4")
-    @meds[:iron]           = Med.new(name: :iron,           interval:48, required:48, default_dose:10.5, half_life:5*3600,     max_dose:52.5,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1FA78")
+    @meds[:iron]           = Med.new(name: :iron,           interval:3,  required:4,  default_dose:10.5, half_life:5*3600,     max_dose:31.5,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1FA78")
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, half_life:5*24*3600,  max_dose:3000,  dose_units: :iu,   display:true,  display_log:true,  emoji:"1F31E")
 
     @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,default_dose:500,  half_life:8*3600,    max_dose:2000,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F30B")
