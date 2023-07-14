@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.14"
+    @version = "3.2.15"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -157,7 +157,7 @@ class MedDash
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display:true,  display_log:true,  emoji:"1F915")
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:96, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F915")
-    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:48, default_dose:0.25, half_life:11*3600,    max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
+    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,  required:48, default_dose:0.25, half_life:6*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F630")
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   half_life:14.5*3600,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:4,  required:48, default_dose:80,   half_life:8*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F497")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
