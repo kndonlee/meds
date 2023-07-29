@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.15"
+    @version = "3.2.16"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -161,7 +161,8 @@ class MedDash
     @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,  required:48, default_dose:25,   half_life:14.5*3600,  max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:propranolol]    = Med.new(name: :propranolol,    interval:4,  required:48, default_dose:80,   half_life:8*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F497")
     @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,  required:48, default_dose:4,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
-    @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24, required:24, default_dose:15,   half_life:1.7*3600,   max_dose:15,    dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  half_life:2*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24, required:24, default_dose:15,   half_life:1.7*3600,   max_dose:15,    dose_units: :mg,   display:false,  display_log:false, emoji:"1F48A")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:3,  required:4,  default_dose:500,  half_life:3600,       max_dose:6500,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:calcium]        = Med.new(name: :calcium,        interval:3,  required:4,  default_dose:250,  half_life:2*3600,     max_dose:1750,  dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9B4")
@@ -180,12 +181,11 @@ class MedDash
     @meds[:fish_eggs]      = Med.new(name: :fish_eggs,      interval:24, required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F48A")
     @meds[:juice]          = Med.new(name: :juice,          interval:24, required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F48A")
     @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:24, required:48, default_dose:1300, half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24, required:48, default_dose:420,  half_life:3600,      max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F9E0")
-    @meds[:epa]            = Med.new(name: :epa,            interval:12, required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:dha]            = Med.new(name: :dha,            interval:12, required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24, required:48, default_dose:420,  half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F9E0")
+    @meds[:epa]            = Med.new(name: :epa,            interval:24, required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
+    @meds[:dha]            = Med.new(name: :dha,            interval:24, required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"1F48A")
     @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,  required:48, default_dose:20,   half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,  required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:soma]           = Med.new(name: :soma,           interval:4,  required:48, default_dose:350,  half_life:2*3600,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24, required:48, default_dose:200,  half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
     # 137ug per spray, 2x per nostril = 548ug
     @meds[:azelastine]     = Med.new(name: :azelastine,     interval:24, required:48, default_dose:548,  half_life:54*3600,   max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F4A6")
