@@ -192,7 +192,7 @@ class MedDash
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  half_life:16*3600,   max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F4A6")
     @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   half_life:5*3600,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:docusate]       = Med.new(name: :docusate,       interval:2,  required:2,  default_dose:100,  half_life:3600,      max_dose:5v00,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
+    @meds[:docusate]       = Med.new(name: :docusate,       interval:2,  required:2,  default_dose:100,  half_life:3600,      max_dose:500,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
     @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,  required:48, default_dose:400,  half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F4AE")
     @meds[:calcium_aep]    = Med.new(name: :calcium_aep,    interval:4,  required:48, default_dose:1850, half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F4AE")
     @meds[:phys_thr]       = Med.new(name: :phys_thr,       interval:24, required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F4A6")
