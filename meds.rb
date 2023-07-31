@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.17"
+    @version = "3.2.18"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -151,7 +151,7 @@ class MedDash
     @meds = {}
     @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:8,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:5,  default_dose:7.5,  half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"26A1")
+    @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:6,  default_dose:7.5,  half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,  required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9E0")
 
@@ -192,7 +192,7 @@ class MedDash
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24, required:48, default_dose:110,  half_life:16*3600,   max_dose:0,     dose_units: :ug,   display:true,  display_log:false, emoji:"1F4A6")
     @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24, required:48, default_dose:10,   half_life:5*3600,    max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
-    @meds[:docusate]       = Med.new(name: :docusate,       interval:4,  required:4,  default_dose:100,  half_life:3600,      max_dose:300,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
+    @meds[:docusate]       = Med.new(name: :docusate,       interval:2,  required:2,  default_dose:100,  half_life:3600,      max_dose:5v00,   dose_units: :mg,   display:true,  display_log:false, emoji:"1F4A9")
     @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,  required:48, default_dose:400,  half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F4AE")
     @meds[:calcium_aep]    = Med.new(name: :calcium_aep,    interval:4,  required:48, default_dose:1850, half_life:3600,      max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F4AE")
     @meds[:phys_thr]       = Med.new(name: :phys_thr,       interval:24, required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display:true,  display_log:false, emoji:"1F4A6")
