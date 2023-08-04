@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.2.19"
+    @version = "3.3.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -657,10 +657,13 @@ class MedDash
 
   def totals
     dir_path = "#{APP_PATH}/totals"
-    files = Dir.children(dir_path).sort.last(14)
+    files = Dir.children(dir_path).sort.last(30)
 
     s = ""
     s += "#{dashboard_header}\n\n"
+
+    max_row_count = 0
+    row_count = 0
 
     records = []
     files.each do |f|
@@ -669,14 +672,31 @@ class MedDash
       data["totals"].each do |med|
         if med["total_dose"] > 0 && show?(med["med"])
           s2 += "#{med["med"]} #{Colors.c183}#{med["total_dose"]} #{Colors.blue_bold}#{med["dose_units"]}#{Colors.reset}\n"
+          row_count += 1
         end
       end
       s2 += "\n"
 
+      max_row_count = row_count if row_count > max_row_count
+      row_count = 0
+
       records << s2
     end
 
-    s += columnify(log_records:records.reverse, log_columns:7)
+    # calculate space available to display log
+    rows, cols = STDOUT.winsize
+    max_col_width = Colors.strip_color(records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
+    rows_to_display = ((rows - 3) / max_row_count).to_i
+    cols_to_display = (cols / (max_col_width -1 )).to_i
+    entries_to_display = rows_to_display * cols_to_display
+    slice_start = records.length - entries_to_display
+    slice_end = records.length
+
+    # puts "rows:#{rows} display_rows:#{rows_to_display} max_row_count:#{max_row_count} display_cols:#{cols_to_display}"
+
+    records_to_display = records.slice(slice_start, slice_end)
+
+    s += columnify(log_records:records_to_display.reverse, log_columns:cols_to_display)
 
     s
   end
