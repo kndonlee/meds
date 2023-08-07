@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.3.0"
+    @version = "3.3.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -149,8 +149,10 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine]       = Med.new(name: :morphine,       interval:8,  required:8,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F480")
+    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:8,  required:48, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F480")
+    @meds[:morphine_ir]    = Med.new(name: :morphine_ir,    interval:4,  required:48, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display:false, display_log:false, emoji:"1F48A")
+    @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,  required:48, default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:6,  default_dose:7.5,  half_life:4*3600,     max_dose:0,     dose_units: :mg,   display:true,  display_log:false, emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,  required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:12, required:12, default_dose:150,  half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display:true,  display_log:true,  emoji:"1F9E0")
@@ -202,12 +204,16 @@ class MedDash
     @meds[:docusate].add_match_term("docusate sodium")
     @meds[:azelastine].add_match_term("azelastine spray")
     @meds[:veramyst].add_match_term("veramyst spray")
-    @meds[:morphine].add_match_term("morphine (er)")
+    @meds[:morphine_er].add_match_term("morphine (er)")
+    @meds[:morphine_er].add_match_term("morphine er")
+    @meds[:morphine_ir].add_match_term("morphine (ir)")
+    @meds[:morphine_ir].add_match_term("morphine ir")
     @meds[:phosphatidyl_c].add_match_term("pc")
     @meds[:valerian_root].add_match_term("valerian root")
     @meds[:fish_eggs].add_match_term("fish egg")
     @meds[:calcium_aep].add_match_term("calcium aep")
     @meds[:phys_thr].add_match_term("physical")
+    @meds[:oxycodone].add_match_term("oxy")
   end
 
   # [
@@ -232,14 +238,24 @@ class MedDash
   #  ],
   #
   def add_med(med:, epoch_time:, dose:nil, unit:nil)
+    puts "add_med called with args: med=#{med} epoch_time=#{epoch_time} dose=#{dose} unit=#{unit}" if $DEBUG
+
     case med
     when /morph/i
-      if dose == "7.5"
-        # @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
-        @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      if med.match(/er/i)
+        @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+      elsif med.match(/ir/i)
+        @meds[:morphine_ir].log(epoch_time:epoch_time, dose:dose, units:unit)
       else
-        @meds[:morphine].log(epoch_time:epoch_time, dose:dose, units:unit)
+        @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
       end
+
+      # if dose == "7.5"
+      #   # @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
+      #   @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+      # else
+      #   @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+      # end
     when /baclo/i
       if dose == "3/4"
         @meds[:baclofen].log(epoch_time:epoch_time, dose:7.5, units:"mg")
@@ -262,6 +278,12 @@ class MedDash
       end
       puts "logging tylenol with dose #{tylenol_dose}" if $DEBUG
       @meds[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
+    when /^oxy/i
+      @meds[:oxycodone].log(epoch_time:epoch_time, dose:dose, units:unit)
+
+      morphine_dose = dose.to_f * 1.5
+      puts "logging oxycodone with morphine dose #{morphine_dose}" if $DEBUG
+      @meds[:morphine_ir].log(epoch_time:epoch_time, dose:morphine_dose, units:unit)
     when /lyric/i
       @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /xanax/i
@@ -435,7 +457,7 @@ class MedDash
         when /^[Nn]ote/
           puts "line case 9: #{line}" if $DEBUG
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
-        when /^[Ss]kip:\s*([A-Za-z()\s]+)$/
+        when /^[Ss]kip:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
           skip($1.strip, message_epoch)
         when /[0-9]+\s*[aApP]\s*$/ # 10p 10a 9a
