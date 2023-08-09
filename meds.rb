@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.3.1"
+    @version = "3.3.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -213,6 +213,7 @@ class MedDash
     @meds[:fish_eggs].add_match_term("fish egg")
     @meds[:calcium_aep].add_match_term("calcium aep")
     @meds[:phys_thr].add_match_term("physical")
+    @meds[:phys_thr].add_match_term("physical therapy")
     @meds[:oxycodone].add_match_term("oxy")
   end
 
@@ -466,16 +467,16 @@ class MedDash
           puts "line case 2: #{line}" if $DEBUG
         when /^\s*$/ # empty line
           puts "line case 3: #{line}" if $DEBUG
-        when /^\s*[A-Za-z+]+\s*$/ # morphine
+        when /^\s*[A-Za-z+_]+\s*$/ # morphine
           puts "line case 4: #{line}" if $DEBUG
           add_med(med:line.strip, epoch_time:message_epoch)
-        when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
+        when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()_\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
           puts "line case 5: #{line}" if $DEBUG
           add_med(med:$3, epoch_time:message_epoch, dose: $1)
-        when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
+        when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()_\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
           puts "line case 6: #{line}" if $DEBUG
           add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
-        when /^\s*([0-9\/]+)\s+([A-Za-z()\s]+)$/ # 3/4 baclofen
+        when /^\s*([0-9\/]+)\s+([A-Za-z()_\s]+)$/ # 3/4 baclofen
           puts "line case 7: #{line}" if $DEBUG
           add_med(med:$2, epoch_time:message_epoch, dose: $1)
         when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
