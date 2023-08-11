@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.3.2"
+    @version = "3.3.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -422,7 +422,7 @@ class MedDash
       zipped_array.each do |row|
         array = row.map{|r| pad_right(r, max_col_width)}
         if row.any? {|str| emoji?(str) }
-          s += "#{array.join(" ")}\n"
+          s += "#{array.join(" ").strip}\n"
         else
           s += "#{array.join("  ")}\n"
         end
