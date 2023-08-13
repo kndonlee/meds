@@ -41,7 +41,7 @@ class Med
 
   @@meds = {}
 
-  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display:true, display_log: true, emoji:, half_life:)
+  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display: :yes, display_log: true, emoji:, half_life:)
     @name = name
     @interval = interval
     @required = required
