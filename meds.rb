@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.4.0"
+    @version = "3.4.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -614,7 +614,7 @@ class MedDash
   end
 
   def dash_update_interval
-    15
+    1
   end
 
   def dash_loop
@@ -622,7 +622,7 @@ class MedDash
 
     if (now - @last_dash_update) > dash_update_interval || @display_dash
       @display_dash = false
-      print ANSI.clear
+      #print ANSI.clear
       ANSI.move_cursor(1,1)
       puts dash
       @last_dash_update = now
