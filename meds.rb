@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.4.1"
+    @version = "3.4.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -529,6 +529,7 @@ class MedDash
     crack_meds
     s = "#{dashboard_header}\n\n"
 
+    # Short Dash of Once-a-day entries
     meds.each_pair do |med, log|
       next if log.interval != 24
       next unless log.display == :yes || log.display == :on_dose
@@ -536,7 +537,8 @@ class MedDash
 
       s += "#{log.taken_today? ? $checkbox_emoji : $cross_emoji} #{med}   "
     end
-    s += "\n\n"
+    s += "\n"
+    s += "#{ANSI.clear_line}\n"
 
     meds.each_pair do |med, log|
       next if log.interval == 24
@@ -549,7 +551,7 @@ class MedDash
       if med == :taurine
         s += "#{line(color:240)}\n"
       elsif  med == :msm || med == :esgic || med == :azelastine
-        s += "\n"
+        s += "#{ANSI.clear_line}\n"
       end
 
       s += "#{log.emoji} #{sprintf("%-14s", med)} #{log}\n"

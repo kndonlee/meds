@@ -26,4 +26,8 @@ class ANSI
   def self.clear
     "#{ESCAPE}[2J"
   end
+
+  def self.clear_line
+    "#{ESCAPE}[2K\r"
+  end
 end
