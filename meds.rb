@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.4.3"
+    @version = "3.4.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -141,7 +141,7 @@ class MedDash
   end
 
   def log_header
-    "#{Colors.yellow_bold}Log#{Colors.reset}"
+    "#{ANSI.clear_line}\r#{Colors.yellow_bold}Log#{Colors.reset}"
   end
 
   def reset_meds
