@@ -37,7 +37,7 @@ class Med
 
   end
 
-  attr_reader :emoji, :dose_units, :display, :display_log, :interval
+  attr_reader :emoji, :dose_units, :display, :display_log, :interval, :name
 
   @@meds = {}
 
@@ -231,11 +231,13 @@ class Med
   end
 
   def done?
+    return true if @skip
+
     total_dose >= @max_dose && @max_dose != 0
   end
 
   def due_to_s
-    if done? || @skip
+    if done?
       done_s
     elsif optional?
       optl_s
