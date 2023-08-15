@@ -349,12 +349,13 @@ class Med
     last = "Last:#{last_dose_s}"
     elapsed = "Elapsed:#{color_elapsed}"
     due = "Due:#{due_to_s}"
-    every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
-    required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
+    # every = "Every:#{Colors.cyan}#{interval}#{color_hrs}"
+    # required = "Required:#{Colors.cyan}#{required_formatted}#{color_hrs}"
+    interval = "Int:#{Colors.cyan}#{interval} #{Colors.reset}/#{Colors.cyan}#{required_formatted}#{color_hrs}"
     remaining = "Remaining:#{Colors.c218}#{sprintf("%7.2f",remaining_dose)} #{Colors.blue_bold}#{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
 
-    "#{last}  #{elapsed}  #{due}  #{every}  #{required}  #{remaining} #{total} #{total_yesterday}"
+    "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday}"
   end
 end
