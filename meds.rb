@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.4.4"
+    @version = "3.4.5"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -149,7 +149,7 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:8,  required:48, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F480")
+    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:8,  required:8,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F480")
     @meds[:morphine_ir]    = Med.new(name: :morphine_ir,    interval:4,  required:48, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose, display_log:true,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :no,      display_log:false, emoji:"1F48A")
     @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,  required:48, default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose, display_log:true,  emoji:"1F48A")

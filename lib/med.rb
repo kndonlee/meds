@@ -195,7 +195,8 @@ class Med
   end
 
   def optl_s
-    "#{Colors.c67_bg}#{Colors.c184}Optl#{Colors.reset}"
+    #"#{Colors.c67_bg}#{Colors.c184}Optl#{Colors.reset}"
+    "#{Colors.c208}Optl#{Colors.reset}"
   end
 
   def take_s
