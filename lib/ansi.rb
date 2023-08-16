@@ -30,4 +30,13 @@ class ANSI
   def self.clear_line
     "#{ESCAPE}[2K\r"
   end
+
+  def self.clear_line_right
+    "#{ESCAPE}[0K"
+  end
+
+  def self.clear_line_left
+    "#{ESCAPE}[1K"
+  end
+
 end
