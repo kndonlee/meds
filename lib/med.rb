@@ -356,6 +356,6 @@ class Med
     total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
 
-    "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday}"
+    "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday}#{ANSI.clear_line_right}"
   end
 end
