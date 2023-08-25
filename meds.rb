@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.4.14"
+    @version = "3.5.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -407,7 +407,7 @@ class MedDash
       # add empty array entries to equalize all arrays to be zipped
       max_rows = a.max_by(&:length).length
       a.each do |array|
-        while array.length <= max_rows
+        while array.length < max_rows
           array << blank_entry(size: max_col_width)
         end
       end
@@ -422,16 +422,24 @@ class MedDash
         end
       end
 
+      print_empty_line = false
       zipped_array.each do |row|
         array = row.map{|r| pad_right(r, max_col_width)}
         if row.any? {|str| emoji?(str) }
+
+          unless print_empty_line
+            s += "#{ANSI.clear_line_right}\n"
+          else
+            print_empty_line = true
+          end
+
           s += "#{array.join(" ").strip}#{ANSI.clear_line_right}\n"
         else
           s += "#{array.join("  ")}#{ANSI.clear_line_right}\n"
         end
       end
     end
-    s
+    s.strip!
   end
 
   def skip(med, epoch)
@@ -530,7 +538,7 @@ class MedDash
 
   def dash
     crack_meds
-    s = "#{dashboard_header}\n\n"
+    s = "#{dashboard_header}#{ANSI.clear_line_right}\n#{ANSI.clear_line_right}\n"
 
     # Short Dash of Once-a-day entries
     meds.each_pair do |med, log|
@@ -540,7 +548,7 @@ class MedDash
 
       s += "#{log.taken_today? ? $checkbox_emoji : $cross_emoji} #{med}   "
     end
-    s += "\n"
+    s += "#{ANSI.clear_line_right}\n"
     s += "#{ANSI.clear_line}\n"
 
     meds.each_pair do |med, log|
@@ -622,6 +630,17 @@ class MedDash
     1
   end
 
+  # after printing everything, there can be leftover text from the prior loop
+  # clean them up
+  def cleanup_empty_lines
+    row, col = ANSI.cursor_position
+    win_row, win_col = STDOUT.winsize
+    lines_to_clear = win_row - row + 1
+    lines_to_clear.times do
+      puts ANSI.clear_line
+    end
+  end
+
   def dash_loop
     now = Time.now.to_i
 
@@ -631,6 +650,8 @@ class MedDash
       ANSI.move_cursor(1,1)
       puts dash
       @last_dash_update = now
+
+      cleanup_empty_lines
     end
 
     exit if @updater.updated?

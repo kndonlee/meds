@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'io/console'
 class ANSI
   ESCAPE = "\u001b"
   def self.start_alternate_buffer
@@ -39,4 +40,16 @@ class ANSI
     "#{ESCAPE}[1K"
   end
 
+  def self.cursor_position
+    res = ""
+    $stdin.raw do |stdin|
+      $stdout << "\e[6n"
+      $stdout.flush
+      while (c = stdin.getc) != 'R'
+        res += c if c
+      end
+    end
+    m = res.match /(?<row>\d+);(?<column>\d+)/
+    [Integer(m[:row]), Integer(m[:column])]
+  end
 end
