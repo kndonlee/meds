@@ -635,7 +635,7 @@ class MedDash
   def cleanup_empty_lines
     row, col = ANSI.cursor_position
     win_row, win_col = STDOUT.winsize
-    lines_to_clear = win_row - row + 1
+    lines_to_clear = win_row - row
     lines_to_clear.times do
       puts ANSI.clear_line
     end
