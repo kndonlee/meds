@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.5.0"
+    @version = "3.5.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -439,7 +439,8 @@ class MedDash
         end
       end
     end
-    s.strip!
+
+    s.strip
   end
 
   def skip(med, epoch)
