@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.5.2"
+    @version = "3.5.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -132,11 +132,11 @@ class MedDash
     elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
 
     if $HIDE_FORBIDDEN
-      s = "#{Colors.c70_bg}#{last_update}  #{version}  #{host}#{Colors.reset}\n"
+      s = "#{Colors.c70_bg}#{last_update}  #{version}  #{host}#{Colors.reset}#{ANSI.clear_line_right}\n"
     else
-      s = "#{last_update}  #{version}  #{host}\n"
+      s = "#{last_update}  #{version}  #{host}#{ANSI.clear_line_right}\n"
     end
-    s += "#{elapsed_key}    #{usage}#{Colors.reset}"
+    s += "#{elapsed_key}    #{usage}#{Colors.reset}#{ANSI.clear_line_right}"
     s
   end
 
@@ -172,9 +172,9 @@ class MedDash
     @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,  required:4,  default_dose:1000, half_life:5*24*3600,  max_dose:3000,  dose_units: :iu,   display: :yes,     display_log:true,  emoji:"1F31E")
     @meds[:alcar]          = Med.new(name: :alcar,          interval:23, required:24, default_dose:500,  half_life:4.2*3600,   max_dose:4000,  dose_units: :mg,   display: :on_dose, display_log:false, emoji:"1F9B4")
 
-    @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,default_dose:500,  half_life:8*3600,    max_dose:2000,  dose_units: :mg,   display: :yes,  display_log:true,  emoji:"1F30B")
+    @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,default_dose:500,  half_life:8*3600,    max_dose:1500,  dose_units: :mg,   display: :yes,  display_log:true,  emoji:"1F30B")
     @meds[:magnesium]      = Med.new(name: :magnesium,      interval:3,  required:3,  default_dose:48,   half_life:4*3600,    max_dose:96,    dose_units: :mg,   display: :yes,  display_log:true,  emoji:"1F48A")
-    @meds[:nac]            = Med.new(name: :nac,            interval:23, required:24, default_dose:600,  half_life:5.6*3600,  max_dose:2500,  dose_units: :mg,   display: :yes,  display_log:true,  emoji:"26FD")
+    @meds[:nac]            = Med.new(name: :nac,            interval:23, required:24, default_dose:500,  half_life:5.6*3600,  max_dose:500,  dose_units: :mg,   display: :yes,  display_log:true,  emoji:"26FD")
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,  required:48, default_dose:50,   half_life:1.2*3600,  max_dose:900,   dose_units: :mg,   display: :yes,  display_log:true,  emoji:"1FAB7")
     @meds[:apigenin]       = Med.new(name: :apigenin,       interval:12, required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,   display_log:false, emoji:"1F48A")
 
