@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.5.5"
+    @version = "3.6.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -285,10 +285,6 @@ class MedDash
       @meds[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
     when /^oxy/i
       @meds[:oxycodone].log(epoch_time:epoch_time, dose:dose, units:unit)
-
-      morphine_dose = dose.to_f * 1.5
-      puts "logging oxycodone with morphine dose #{morphine_dose}" if $DEBUG
-      @meds[:morphine_ir].log(epoch_time:epoch_time, dose:morphine_dose, units:unit)
     when /lyric/i
       @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /xanax/i
