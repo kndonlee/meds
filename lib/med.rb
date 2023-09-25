@@ -90,6 +90,8 @@ class Med
       normalized_dose
     elsif @dose_units.to_s.downcase == "mg" && dose_units.to_s.downcase == "g"
       normalized_dose = normalized_dose * 1000
+    elsif @dose_units.to_s.downcase == "mg" && dose_units.to_s.downcase == "omg" # temp hack
+      normalized_dose = normalized_dose * 1000
     elsif @dose_units.to_s.downcase == "g" && dose_units.to_s.downcase == "mg"
       normalized_dose = normalized_dose.to_f / 1000
     else

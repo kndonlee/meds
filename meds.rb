@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.6.1"
+    @version = "3.6.2"
     @hostname = `hostname`.strip
     reset_meds
 
