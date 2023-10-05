@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.6.3"
+    @version = "3.6.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -131,10 +131,12 @@ class MedDash
     usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [L]og [T]otals #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
     elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
 
+    rows, cols = STDOUT.winsize
+
     if $HIDE_FORBIDDEN
       s = "#{Colors.c70_bg}#{last_update}  #{version}  #{host}#{Colors.reset}#{ANSI.clear_line_right}\n"
     else
-      s = "#{last_update}  #{version}  #{host}#{ANSI.clear_line_right}\n"
+      s = "#{last_update}  #{version}  #{host} #{rows}x#{cols}#{ANSI.clear_line_right}\n"
     end
     s += "#{elapsed_key}    #{usage}#{Colors.reset}#{ANSI.clear_line_right}"
     s
@@ -739,7 +741,7 @@ class MedDash
     rows, cols = STDOUT.winsize
     max_col_width = Colors.strip_color(records.map{ |e| e.split("\n") }.flatten.max_by{|s| Colors.strip_color(s).length}).length
     rows_to_display = ((rows - 3) / max_row_count).to_i
-    cols_to_display = (cols / (max_col_width -1 )).to_i
+    cols_to_display = (cols / (max_col_width + 2)).to_i
     entries_to_display = rows_to_display * cols_to_display
     slice_start = records.length - entries_to_display
     slice_end = records.length
