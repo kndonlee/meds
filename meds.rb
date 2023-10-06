@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.6.4"
+    @version = "3.6.5"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -151,14 +151,14 @@ class MedDash
     # required >  interval => Optl to TAKE
     #
     @meds = {}
-    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:8,  required:8,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F480")
+    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:8,  required:24, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F480")
     @meds[:morphine_ir]    = Med.new(name: :morphine_ir,    interval:4,  required:48, default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose, display_log:true,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,  required:48, default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :no,      display_log:false, emoji:"1F48A")
     @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,  required:48, default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose, display_log:true,  emoji:"1F48A")
     @meds[:hydrocodone]    = Med.new(name: :hydrocodone,    interval:4,  required:48, default_dose:10,   half_life:3.8*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose, display_log:true,  emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:4,  required:6,  default_dose:7.5,  half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :yes,     display_log:false, emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,  required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"26A1")
-    @meds[:lyrica]         = Med.new(name: :lyrica,         interval:8,  required:8,  default_dose:50,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F9E0")
+    @meds[:lyrica]         = Med.new(name: :lyrica,         interval:8,  required:12, default_dose:50,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F9E0")
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,  required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display: :yes,     display_log:true,  emoji:"1F915")
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,  required:96, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :yes,     display_log:true,  emoji:"1F915")
