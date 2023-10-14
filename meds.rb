@@ -61,7 +61,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "3.6.5"
+    @version = "3.7.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -557,7 +557,7 @@ class MedDash
       next if log.interval == 24
       next unless log.display == :yes || log.display == :on_dose
       if log.display == :on_dose
-        next unless log.taken_today?
+        next unless log.taken_yesterday?
       end
       next unless show?(med.to_s)
 

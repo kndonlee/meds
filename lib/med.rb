@@ -153,6 +153,23 @@ class Med
     false
   end
 
+  def taken_yesterday?
+    if @dose_log.last.nil?
+      return false
+    else
+      doses = @dose_log.select{|d| d.dose >= 0}
+      if doses.empty?
+        return false
+      else
+        if doses.last.epoch_time > Med.last_5am_epoch_yesterday
+          return true
+        end
+      end
+    end
+
+    false
+  end
+
   def last_dose
     if @dose_log.last.nil?
       nil
