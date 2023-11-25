@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class Med
+  SPEAKER_MUTED_EMOJI = "\u{1F507}"
+  SPEAKER_EMOJI = "\u{1F508}"
+  SLEEP_EMOJI = "\u{1F634}"
+
   class Dose
 
     attr_accessor :epoch_time, :dose, :dose_units
@@ -37,11 +41,11 @@ class Med
 
   end
 
-  attr_reader :emoji, :dose_units, :display, :display_log, :interval, :name
+  attr_reader :emoji, :dose_units, :display, :display_log, :interval, :name, :announce
 
   @@meds = {}
 
-  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display: :yes, display_log: true, emoji:, half_life:)
+  def initialize(name:, interval:, required:true, default_dose:, max_dose:0, dose_units:, display: :yes, display_log: true, emoji:, half_life:, announce:)
     @name = name
     @interval = interval
     @required = required
@@ -51,7 +55,9 @@ class Med
     @display = display
     @display_log = display_log
     @half_life = half_life
+    @announce = announce
 
+    @sleeping = true # whether kim is sleeping or awake, always start sleeping, then wake up via time passing or a call to being awake
     @dose_log = []
     @emoji = [emoji.hex].pack("U") # convert to unicode emoji
     @@meds[name] = self
@@ -70,6 +76,10 @@ class Med
     end
 
     false
+  end
+
+  def im_awake
+    @sleeping = false
   end
 
   def skip_today
@@ -218,6 +228,10 @@ class Med
     "#{Colors.c208}Optl#{Colors.reset}"
   end
 
+  def zzz_s
+    "#{Colors.c218}zZzZ#{Colors.reset}"
+  end
+
   def take_s
     "#{Colors.red}TAKE#{Colors.reset}"
   end
@@ -256,9 +270,29 @@ class Med
     total_dose >= @max_dose && @max_dose != 0
   end
 
+  def sleeping?
+    return false if @display != :yes_awake  # only do sleep logic to entries that should be on awake
+
+    current_time = Time.now
+    # we are always awake after 3p
+    awake_time = Time.new(current_time.year, current_time.month, current_time.day, 15, 0)
+    # used for handling 12a to 5a period
+    reset_day = Time.new(current_time.year, current_time.month, current_time.day, 5, 0)
+
+    if (current_time <= reset_day) # before 5a, we are usually up
+      false
+    elsif (current_time <= awake_time) # true defers sleep determination logic to user
+      @sleeping
+    else
+      false
+    end
+  end
+
   def due_to_s
     if done?
       done_s
+    elsif sleeping?
+      zzz_s
     elsif optional?
       optl_s
     elsif due?
@@ -375,6 +409,9 @@ class Med
     total = "Total:#{Colors.purple_bold}#{dose}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
     total_yesterday = "Yesterday:#{Colors.purple_bold}#{dose_y}#{Colors.blue_bold} #{sprintf("%-04s",@dose_units)}#{Colors.reset}"
 
-    "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday}#{ANSI.clear_line_right}"
+    announce = @announce ? "#{SPEAKER_EMOJI}" : "#{SPEAKER_MUTED_EMOJI}"
+    sleep = (@display == :yes_awake) ? " #{SLEEP_EMOJI}" : ""
+
+    "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday} #{announce}#{sleep}#{ANSI.clear_line_right}"
   end
 end

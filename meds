@@ -2,14 +2,18 @@
 
 while true; do
   : ${mode:=RUBY}
+  : ${git_pull:=true}
 
   cd "$(dirname "$0")"
 
-  git pull
+  if [[ ${git_pull} = true ]]; then
+    git pull
+  fi
 
   if [[ $mode = "BASH" ]]; then
     ./meds.sh
   elif [[ $mode = "RUBY" ]]; then
+    bundler install
     ./meds_runner.rb
   fi
 
