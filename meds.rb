@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.1.0"
+    @version = "4.1.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -471,6 +471,24 @@ class MedDash
     end
   end
 
+  def show(med, epoch)
+    @meds.each do |med_name, med_entry|
+      if med_entry.match?(med) && epoch > Med.last_5am_epoch
+        med_entry.show_today
+        next
+      end
+    end
+  end
+
+  def hide(med, epoch)
+    @meds.each do |med_name, med_entry|
+      if med_entry.match?(med) && epoch > Med.last_5am_epoch
+        med_entry.hide_today
+        next
+      end
+    end
+  end
+
   def im_awake
     @meds.each do |med_name, med_entry|
       med_entry.im_awake
@@ -498,6 +516,12 @@ class MedDash
         when /^[Ss]kip:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
           skip($1.strip, message_epoch)
+        when /^[Hh]ide:\s*([A-Za-z()_\s]+)$/
+          puts "line case 10: #{line}" if $DEBUG
+          hide($1.strip, message_epoch)
+        when /^[Ss]how:\s*([A-Za-z()_\s]+)$/
+          puts "line case 10: #{line}" if $DEBUG
+          show($1.strip, message_epoch)
         when @@sun_emoji_regex
           @logger.log("Parser matched awake signal, marking all meds as awake")
           im_awake

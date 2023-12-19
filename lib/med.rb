@@ -86,6 +86,14 @@ class Med
     @skip = true
   end
 
+  def show_today
+    @display = :yes
+  end
+
+  def hide_today
+    @display = :no
+  end
+
   def normalize_dose(dose, dose_units)
     if dose.to_s.include?("/")
       n, d = dose.split('/').map(&:to_i)
