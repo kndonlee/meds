@@ -163,6 +163,32 @@ class Med
     false
   end
 
+  # used for short hand display
+  # return 1 of 3 options
+  #   not_taken - red X
+  #   in_progress - yello circle emoji
+  #   finished - green check box emoji
+  def finish_state
+    if @dose_log.last.nil?
+      return :not_taken
+    else
+      doses = @dose_log.select{|d| d.dose >= 0}
+      if doses.empty?
+        return :not_taken
+      else
+        if doses.last.epoch_time > Med.last_5am_epoch
+          if total_dose >= @max_dose
+            return :finished
+          else
+            return :in_progress
+          end
+        end
+      end
+    end
+
+    :not_taken
+  end
+
   def taken_yesterday?
     if @dose_log.last.nil?
       return false
