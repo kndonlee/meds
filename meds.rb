@@ -64,12 +64,13 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.1.3"
+    @version = "4.1.4"
     @hostname = `hostname`.strip
     reset_meds
 
     @logger = MedLogger.instance
     @logger.log("MedDash started: version:#{@version} host:#{@hostname}")
+    @logger.log("Ruby Version: #{RUBY_VERSION}")
 
     @updater = Updater.new
     @last_dash_update = Time.now.to_i
@@ -523,7 +524,7 @@ class MedDash
           puts "line case 10: #{line}" if $DEBUG
           show($1.strip, message_epoch)
         when @@sun_emoji_regex
-          @logger.log("Parser matched awake signal, marking all meds as awake")
+          @logger.log("Parser matched awake signal, marking all meds as awake") if $DEBUG
           im_awake
         when /^[0-9]+:[0-9][0-9]:[0-9][0-9]\s*/ # 10:00:00
           @logger.log("Parser matched time in xx:xx:xx format: #{line}") if $DEBUG
