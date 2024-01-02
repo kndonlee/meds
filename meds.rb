@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.1.8"
+    @version = "4.1.9"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -82,7 +82,7 @@ class MedDash
     @display_totals = true
     @display_log = false
     @save_totals = false
-    @muted = true
+    @muted = false
 
     interval = 5
     @timer_thread = Thread.new do
