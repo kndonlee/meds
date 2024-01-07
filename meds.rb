@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.1.11"
+    @version = "4.2.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -83,9 +83,14 @@ class MedDash
     @display_log = false
     @save_totals = false
     @muted = false
+    @auto_show_narcotic = true
+
+    @status_display_s = ""
 
     interval = 5
     @timer_thread = Thread.new do
+      # initial sleep not to trigger mute sound
+      sleep 5
       loop do
         med_count = med_count_to_take
         if med_count == 0
@@ -144,13 +149,19 @@ class MedDash
     rows, cols = STDOUT.winsize
     row_cols =  "#{Colors.yellow_bold}Window:#{Colors.purple_bold}#{rows}x#{cols}"
     actions_usage = "#{Colors.yellow_bold}Actions:#{Colors.purple_bold}Skip:#{Colors.yellow_bold}|#{Colors.purple_bold}Show:#{Colors.yellow_bold}|#{Colors.purple_bold}Hide:#{Colors.yellow_bold}|\u{1F31E}"
+    auto_narcotic = "#{Colors.yellow_bold}AutoN: #{@auto_show_narcotic ? $checkbox_emoji : $cross_emoji}"
 
     if $HIDE_FORBIDDEN
       s = "#{Colors.c70_bg}#{last_update}  #{version}  #{host}  #{med_count}#{Colors.reset}#{ANSI.clear_line_right}\n"
     else
       s = "#{last_update}  #{version}  #{host} #{med_count} #{row_cols} #{actions_usage}#{ANSI.clear_line_right}\n"
     end
-    s += "#{elapsed_key}    #{usage}#{Colors.reset}#{ANSI.clear_line_right}"
+    s += "#{elapsed_key}    #{usage}  #{auto_narcotic}#{Colors.reset}#{ANSI.clear_line_right}"
+
+    unless @status_display_s.empty?
+      s += "\n#{Colors.c202_bg}Status: #{@status_display_s}#{Colors.reset}#{ANSI.clear_line_right}"
+    end
+
     s
   end
 
@@ -172,6 +183,8 @@ class MedDash
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:8,    required:12, default_dose:5,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:false, announce:false,  emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,    required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:6,    required:8,  default_dose:18,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:true,   emoji:"1F9E0")
+    @meds[:periactin]      = Med.new(name: :periactin,      interval:6,    required:8,  default_dose:2,    half_life:7.5*3600,  max_dose:12,    dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
+
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,    required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,    required:96, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
     @meds[:xanax]          = Med.new(name: :xanax,          interval:4,    required:48, default_dose:0.25, half_life:6*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F630")
@@ -193,11 +206,10 @@ class MedDash
     @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,    required:48, default_dose:50,   half_life:1.2*3600,  max_dose:900,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1FAB7")
     @meds[:apigenin]       = Med.new(name: :apigenin,       interval:12,   required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
 
-    @meds[:butyrate]       = Med.new(name: :butyrate,       interval:24,   required:48, default_dose:100,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F4A6")
+    @meds[:butyrate]       = Med.new(name: :butyrate,       interval:24,   required:48, default_dose:100,  half_life:3600,      max_dose:600,   dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F4A6")
     @meds[:liver]          = Med.new(name: :liver,          interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
     @meds[:marrow]         = Med.new(name: :marrow,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
     @meds[:probiotic]      = Med.new(name: :probiotic,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:1,     dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:periactin]      = Med.new(name: :periactin,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
     @meds[:oyster]         = Med.new(name: :oyster,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
     @meds[:fish_eggs]      = Med.new(name: :fish_eggs,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F48A")
     @meds[:juice]          = Med.new(name: :juice,          interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F48A")
@@ -240,6 +252,37 @@ class MedDash
     @meds[:phys_thr].add_match_term("physical therapy")
   end
 
+  def hide_narcotics(epoch)
+    hide("morphine_er", epoch)
+    hide("morphine_ir", epoch)
+    hide("dilauded", epoch)
+    hide("oxycodone", epoch)
+  end
+
+  def toggle_narcotic_visibility(med, epoch)
+    return unless @auto_show_narcotic
+
+    case med
+    when /morphine/
+      if med.match(/er/i)
+        hide_narcotics(epoch)
+        show("morphine_er", epoch)
+      elsif med.match(/ir/i)
+        hide_narcotics(epoch)
+        show("morphine_ir", epoch)
+      else
+        hide_narcotics(epoch)
+        show("morphine_er", epoch)
+      end
+    when /dilauded/i
+      hide_narcotics(epoch)
+      show("dilauded", epoch)
+    when /oxycodone/i
+      hide_narcotics(epoch)
+      show("oxycodone", epoch)
+    end
+  end
+
   # [
   #  0, #0 from me
   #  "chat574232935236064109", #1 chat id
@@ -263,6 +306,8 @@ class MedDash
   #
   def add_med(med:, epoch_time:, dose:nil, unit:nil)
     puts "add_med called with args: med=#{med} epoch_time=#{epoch_time} dose=#{dose} unit=#{unit}" if $DEBUG
+
+    toggle_narcotic_visibility(med, epoch_time)
 
     case med
     when /morph/i
@@ -379,6 +424,14 @@ class MedDash
         end
       end
     end
+  end
+
+  def update_status(str)
+    @status_display_s = "#{str}"
+  end
+
+  def clear_status
+    @status_display_s = ""
   end
 
   def blank_entry(size:0)
@@ -530,6 +583,12 @@ class MedDash
         when @@sun_emoji_regex
           @logger.log("Parser matched awake signal, marking all meds as awake") if $DEBUG
           im_awake
+        when /^[Ss]tatus:\s*clear$/i
+          clear_status
+        when /^[Ss]tatus:\s*(.*)$/
+          update_status($1.strip)
+        when /^[Aa]uto[Nn]:/
+          @auto_show_narcotic ? @auto_show_narcotic = false : @auto_show_narcotic = true
         when /^[0-9]+:[0-9][0-9]:[0-9][0-9]\s*/ # 10:00:00
           @logger.log("Parser matched time in xx:xx:xx format: #{line}") if $DEBUG
         when /[0-9]+:[0-9][0-9]:[0-9][0-9]\s*[aApP]/ # 10:32:15p
