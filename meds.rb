@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.0"
+    @version = "4.2.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -263,7 +263,7 @@ class MedDash
     return unless @auto_show_narcotic
 
     case med
-    when /morphine/
+    when /morphine/i
       if med.match(/er/i)
         hide_narcotics(epoch)
         show("morphine_er", epoch)

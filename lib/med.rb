@@ -112,6 +112,8 @@ class Med
       normalized_dose = normalized_dose * 1000
     elsif @dose_units.to_s.downcase == "g" && dose_units.to_s.downcase == "mg"
       normalized_dose = normalized_dose.to_f / 1000
+    elsif @dose_units.to_s.downcase == "meq" && dose_units.to_s.downcase == "meqs"
+      normalized_dose = normalized_dose.to_f
     else
       puts "#{@name} unable to normalize dose from #{dose} #{dose_units} to #{@dose_units}"
     end
