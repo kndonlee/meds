@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.1"
+    @version = "4.2.2"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -105,10 +105,13 @@ class MedDash
     end
   end
 
-  def announce_meds_due
+  def announce_meds_due(manual=true)
     med_count = med_count_to_take
     med_word = med_count == 1 ? "med" : "meds"
     system("say -v Daniel \"Kimberly, you now have #{med_count} #{med_word} due.\"")
+
+    manual_word = manual ? "manually" : "automatically"
+    @logger.log("announced #{med_count} #{manual_word}")
   end
 
   def med_count_to_take
@@ -959,7 +962,7 @@ class MedDash
           @mode = "t"
           @display_totals = true
         when "a"
-          announce_meds_due
+          announce_meds_due(true)
         when "s"
           @save_totals = true
         when "n"
