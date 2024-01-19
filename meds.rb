@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.6"
+    @version = "4.2.7"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -96,7 +96,7 @@ class MedDash
         if med_count == 0
           interval = 5
         else
-          announce_meds_due unless @muted
+          announce_meds_due(false) unless @muted
           interval = 1800
         end
 
