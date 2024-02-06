@@ -381,11 +381,11 @@ class Med
     s = ""
 
     if (limit == 0)
-      @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch && d.dose > 0}.each do |d|
+      @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch}.each do |d|
         s += "#{d.to_s}\n"
       end
     else
-      @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch && d.dose > 0}.last(limit).each do |d|
+      @dose_log.select {|d| d.epoch_time > Med.last_5am_epoch}.last(limit).each do |d|
         s += "#{d.to_s}\n"
       end
     end

@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.7"
+    @version = "4.2.8"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -310,9 +310,12 @@ class MedDash
   #  ],
   #
   def add_med(med:, epoch_time:, dose:nil, unit:nil)
-    puts "add_med called with args: med=#{med} epoch_time=#{epoch_time} dose=#{dose} unit=#{unit}" if $DEBUG
+    @logger.log "add_med called with args: med=#{med} epoch_time=#{epoch_time} dose=#{dose} unit=#{unit}" if $DEBUG
 
     toggle_narcotic_visibility(med, epoch_time)
+
+    # parse numbers
+    dose = dose.to_r.to_f unless dose.nil?
 
     case med
     when /morph/i
@@ -342,13 +345,7 @@ class MedDash
         @logger.log("tylenol dose default 325") if $DEBUG
         tylenol_dose = 325
       else
-        if dose.match(/^\d+\/\d+$/) # convert fraction to float
-          dose_f = dose.to_r.to_f
-          @logger.log("dose calculated to #{dose_f} from #{dose}") if $DEBUG
-        else
-          dose_f = dose.to_f
-        end
-        tylenol_dose = dose_f * 325
+        tylenol_dose = dose * 325
       end
 
       # we don't want esgic to push tylenol forward, so submit current esgic as last tylenol dose time
@@ -603,27 +600,27 @@ class MedDash
         when /[0-9]+:[0-9]+\s*[aApP]/ # 10:32p
           @logger.log("Parser matched time in 10:32a format: #{line}") if $DEBUG
         when /^\s*$/ # empty line
-          puts "line case 3: #{line}" if $DEBUG
+          @logger.log "line case 3: #{line}" if $DEBUG
         when /^\s*[A-Za-z+_]+\s*$/ # morphine
-          puts "line case 4: #{line}" if $DEBUG
+          @logger.log "line case 4: #{line}" if $DEBUG
           add_med(med:line.strip, epoch_time:message_epoch)
         when /^\s*(-?\d*(\.\d+)?)\s+([A-Za-z()_\s]+)$/ # 15 (morphine), .25 xanax, 7.5 morphine
-          puts "line case 5: #{line}" if $DEBUG
+          @logger.log "line case 5: #{line}" if $DEBUG
           add_med(med:$3, epoch_time:message_epoch, dose: $1)
         when /^\s*(-?\d*(\.\d+)?)\s*([A-Za-z]+)\s+([A-Za-z0-9()_\s\/-]+)”?\s*$/ # 15mg (morphine), .25mg xanax, 7.5 morphine, 2000iu vitamin d
-          puts "line case 6: #{line}" if $DEBUG
+          @logger.log "line case 6: #{line}" if $DEBUG
           add_med(med:$4, epoch_time:message_epoch, dose: $1, unit:$3)
         when /^\s*([0-9\/]+)\s+([A-Za-z()_\s]+)$/ # 3/4 baclofen
-          puts "line case 7: #{line}" if $DEBUG
+          @logger.log "line case 7: #{line}" if $DEBUG
           add_med(med:$2, epoch_time:message_epoch, dose: $1)
         when /^\s*([\d\/]+)\/(\d+)$/ # ignore bp
-          puts "line case 8: #{line}" if $DEBUG
+          @logger.log "line case 8: #{line}" if $DEBUG
           # ignore
         when /^Laughed at/
         when /^Loved/
         when /^Liked/
         when @@emoji_regex
-          puts "line case 10: #{line}" if $DEBUG
+          @logger.log "line case 10: #{line}" if $DEBUG
           # ignore
         else
           @errors += "parse_error: #{line}\n"
@@ -857,6 +854,8 @@ class MedDash
 
     records = []
     files.each do |f|
+      next unless f.match(/^\d\d\d\d-\d\d-\d\d$/)
+
       data = JSON.parse(File.read("#{dir_path}/#{f}"))
       s2 = "#{Colors.c208}#{data["date"]}#{Colors.reset}\n"
       data["totals"].each do |med|
