@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.11"
+    @version = "4.2.12"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -214,7 +214,7 @@ class MedDash
     @meds[:marrow]         = Med.new(name: :marrow,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:18000, dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
     @meds[:probiotic]      = Med.new(name: :probiotic,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:1,     dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
     @meds[:oyster]         = Med.new(name: :oyster,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:fish_eggs]      = Med.new(name: :fish_eggs,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F48A")
+    @meds[:fish_eggs]      = Med.new(name: :fish_eggs,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
     @meds[:juice]          = Med.new(name: :juice,          interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F48A")
     @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:24,   required:48, default_dose:1300, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
     @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24,   required:48, default_dose:420,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F9E0")
