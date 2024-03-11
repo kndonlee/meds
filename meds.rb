@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.2.12"
+    @version = "4.2.14"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -228,7 +228,7 @@ class MedDash
     # 27.5ug per spray, 2x per nostril = 100ug
     @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24,   required:48, default_dose:110,  half_life:16*3600,   max_dose:0,     dose_units: :ug,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
     @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24,   required:48, default_dose:10,   half_life:5*3600,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:docusate]       = Med.new(name: :docusate,       interval:3,    required:3,  default_dose:100,  half_life:3600,      max_dose:400,   dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F4A9")
+    @meds[:docusate]       = Med.new(name: :docusate,       interval:3,    required:3,  default_dose:100,  half_life:3600,      max_dose:300,   dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F4A9")
     @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,    required:48, default_dose:400,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4AE")
     @meds[:calcium_aep]    = Med.new(name: :calcium_aep,    interval:4,    required:48, default_dose:1850, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4AE")
     @meds[:fem]            = Med.new(name: :fem,            interval:24,   required:24, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
