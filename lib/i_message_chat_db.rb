@@ -52,14 +52,19 @@ class IMessageChatDB
     @db = SQLite3::Database.new(@db_path)
     db_results = @db.execute(db_query)
 
-    db_results_parsed = db_results.map do |result|
+    db_results_parsed = db_results.map do |r|
+      result = r.dup
+
       if !result[5].nil?
         result[6] = nil
         result
       elsif result[6].nil?
         result
       else
-        attributed_body = result[6].force_encoding('UTF-8').encode('UTF-8', invalid: :replace)
+        r6 = result[6].dup
+        attributed_body = r6.
+	  force_encoding('UTF-8').
+          encode('UTF-8', invalid: :replace)
 
         # puts "unicodebody: #{attributed_body}"
 
