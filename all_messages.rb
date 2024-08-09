@@ -41,7 +41,8 @@ ORDER BY
 
 db_results = db.execute(db_query)
 
-db_results_parsed = db_results.map do |result|
+db_results_parsed = db_results.map do |r|
+  result = r.dup
 
   if result[5] != nil
     result[6] = nil
