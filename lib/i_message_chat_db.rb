@@ -20,16 +20,21 @@ class IMessageChatDB
 
     chat_id_path = "#{app_path}/chatid"
     if File.readable?(chat_id_path)
-      File.read(chat_id_path).strip
+      File.read(chat_id_path).strip.split("\n")
     else
-      # donalds chatid
-      'chat574232935236064109'
+      raise "chatid file not found: #{app_path}/chatid"
+      # # donalds chatid
+      # [
+      #   'chat574232935236064109',
+      #   'chat554647835339550718'
+      # ]
     end
   end
 
   def db_query
-    @query || (@query = "
-    SELECT
+    @query || (
+    first = true;
+    query_str = "SELECT
       message.is_from_me,
       chat.chat_identifier,
       datetime (message.date / 1000000000 + strftime (\"%s\", \"2001-01-01\"), \"unixepoch\", \"localtime\") AS message_date,
@@ -41,11 +46,22 @@ class IMessageChatDB
       chat
       JOIN chat_message_join ON chat. \"ROWID\" = chat_message_join.chat_id
       JOIN message ON chat_message_join.message_id = message. \"ROWID\"
-    WHERE
-       chat.chat_identifier LIKE \"#{chat_id}\"
-       AND (now_epoch-message_epoch) <= #{@@query_history}
+    WHERE \n"
+
+    chat_id.each do |id|
+      if first
+        query_str += "( chat.chat_identifier LIKE \"#{id}\" "
+        first = false
+      else
+        query_str += "OR chat.chat_identifier LIKE \"#{id}\" "
+      end
+    end
+    query_str += ")
+      AND (now_epoch-message_epoch) <= #{@@query_history}
     ORDER BY
-      message_date ASC")
+      message_date ASC"
+    @query = query_str
+    )
   end
 
   def get
