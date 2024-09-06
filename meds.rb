@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.6.6"
+    @version = "4.6.7"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -254,6 +254,7 @@ class MedDash
     @meds[:ubiquinol]      = Med.new(name: :ubiquinol,      interval:3,    required:4.5, default_dose:50,  half_life:3600*33,   max_dose:200,   dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F517")
     @meds[:herbs]          = Med.new(name: :herbs,          interval:4,    required:24, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :yes,       display_log:false, announce:false,  emoji:"1F4A8")
     @meds[:ergothioneine]  = Med.new(name: :ergothioneine,  interval:4,    required:6,  default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
+    @meds[:creatine]       = Med.new(name: :creatine,       interval:24,   required:24, default_dose:1,    half_life:3600*3,    max_dose:5,     dose_units: :g,    display: :no,        display_log:false, announce:false,  emoji:"1F517")
     @meds[:dummy]          = Med.new(name: :dummy,          interval:4,    required:6,  default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
 
     # additional ways to match terms
