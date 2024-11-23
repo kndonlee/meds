@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.6.12"
+    @version = "4.6.14"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -188,7 +188,7 @@ class MedDash
     @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,    required:5,  default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
     @meds[:hydrocodone]    = Med.new(name: :hydrocodone,    interval:4,    required:48, default_dose:10,   half_life:3.8*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
     @meds[:dilauded]       = Med.new(name: :dilauded,       interval:4,    required:6,  default_dose:1,    half_life:2.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
-    @meds[:baclofen]       = Med.new(name: :baclofen,       interval:8,    required:12, default_dose:5,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:false, announce:false,  emoji:"26A1")
+    @meds[:baclofen]       = Med.new(name: :baclofen,       interval:23.9, required:48, default_dose:5,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:false, announce:false,  emoji:"26A1")
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,    required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:10,   required:18, default_dose:18,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F9E0")
     @meds[:periactin]      = Med.new(name: :periactin,      interval:6,    required:8,  default_dose:2,    half_life:7.5*3600,   max_dose:12,    dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F971")
