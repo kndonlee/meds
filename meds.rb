@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.6.16"
+    @version = "4.6.17"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -259,6 +259,7 @@ class MedDash
     @meds[:creatine]       = Med.new(name: :creatine,       interval:24,   required:24, default_dose:1,    half_life:3600*3,    max_dose:5,     dose_units: :g,    display: :no,        display_log:false, announce:false,  emoji:"1F517")
     @meds[:dummy]          = Med.new(name: :dummy,          interval:4,    required:6,  default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
     @meds[:mitoq]          = Med.new(name: :mitoq,          interval:24,   required:24, default_dose:2.5,  half_life:3600*3,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
+    @meds[:hcasein]        = Med.new(name: :hcasein,        interval:24,   required:24, default_dose:2.5,  half_life:3600*3,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
 
     # additional ways to match terms
     @meds[:docusate].add_match_term("docusate sodium")
