@@ -56,6 +56,7 @@ class Med
     @display_log = display_log
     @half_life = half_life
     @announce = announce
+    @med_dash = nil
 
     @sleeping = true # whether kim is sleeping or awake, always start sleeping, then wake up via time passing or a call to being awake
     @dose_log = []
@@ -64,6 +65,10 @@ class Med
     @skip = false
 
     @name_match = [@name.to_s]
+  end
+
+  def set_dash(med_dash_reference)
+    @med_dash = med_dash_reference
   end
 
   def add_match_term(regex)
@@ -280,6 +285,10 @@ class Med
     "#{Colors.c154}done#{Colors.reset}"
   end
 
+  def prep_s
+    "#{Colors.c208}Prep#{Colors.reset}"
+  end
+
   def optional?
     elapsed > (@interval * 3600) && elapsed < (@required * 3600)
   end
@@ -449,5 +458,51 @@ class Med
     sleep = (@display == :yes_awake) ? " #{SLEEP_EMOJI}" : ""
 
     "#{last}  #{elapsed}  #{due}  #{interval}  #{remaining} #{total} #{total_yesterday} #{announce}#{sleep}#{ANSI.clear_line_right}"
+  end
+
+  def set_elapsed_secs
+    # seconds since last set bump
+    (Time.now.to_i - @med_dash.current_set_bump_epoch).abs
+  end
+
+  # seconds of the interval until the next bump
+  def set_interval_secs
+    # in hours
+    MED_SETS[@med_dash.current_set_index][:interval] * 3600
+  end
+
+  def seconds_to_hhmm(seconds)
+    elapsed_hours = sprintf("%02d", (seconds / 3600).to_i)
+    elapsed_minutes = sprintf("%02d", ((seconds % 3600) / 60).to_i)
+
+    "#{elapsed_hours}:#{elapsed_minutes}"
+  end
+
+  # HH:MM to take next set
+  def seconds_until_take
+    secs_until_take = set_interval_secs - set_elapsed_secs
+
+    if secs_until_take < 0
+      0
+    else
+      secs_until_take
+    end
+  end
+
+  def set_due
+    if seconds_until_take > 0
+      prep_s
+    else
+      take_s
+    end
+  end
+
+  def to_set_s
+    #    to_countdown = sprintf("%2d", epoch_to_time_s(@med_dash.current_set_bump_epoch))
+    elapsed_since_set_bump_hhmm = "#{Colors.purple_bold}#{seconds_to_hhmm(set_elapsed_secs)}"
+    countdown_interval_hhmm = "#{Colors.cyan}#{seconds_to_hhmm(set_interval_secs)}"
+    countdown_hhmm = "#{Colors.c183}#{seconds_to_hhmm(seconds_until_take)}"
+
+    "Due:#{set_due}#{Colors.reset}  Countdown:#{countdown_hhmm}#{Colors.reset}  Elapsed:#{elapsed_since_set_bump_hhmm}#{Colors.reset}  Int:#{countdown_interval_hhmm}#{Colors.reset}#{ANSI.clear_line_right}"
   end
 end

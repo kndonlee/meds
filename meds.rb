@@ -19,6 +19,9 @@ $LOAD_PATH.unshift APP_PATH
 $DEBUG = ENV["DEBUG"] == "true"
 $HIDE_FORBIDDEN = ENV["HIDE_FORBIDDEN"] == "true"
 
+MEDS = {}
+MED_SETS = []
+
 class Updater
   attr_reader :current_sha
   def initialize
@@ -62,9 +65,9 @@ class MedDash
   @@emoji_regex = /[\u{1F600}-\u{1F64F}\u{2702}-\u{27B0}\u{1F680}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F1E6}-\u{1F1FF}]/
   @@sun_emoji_regex = /^\u{1F31E}/
 
-  attr_accessor :meds
+  attr_accessor :meds, :current_set_bump_epoch, :current_set_index
   def initialize
-    @version = "4.6.17"
+    @version = "5.0.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -86,6 +89,10 @@ class MedDash
     @auto_show_narcotic = true
 
     @status_display_s = ""
+
+    @current_set_index = 0
+    @manual_set_increments = 0 # count of manual key presses
+    @current_set_bump_epoch = Med.last_5am_epoch
 
     interval = 5
     @timer_thread = Thread.new do
@@ -121,7 +128,7 @@ class MedDash
 
   def med_count_to_take
     count = 0
-    @meds.each do |name, med|
+    MEDS.each do |name, med|
       @logger.log("count state #{med.name} announce:#{med.announce} due:#{med.due?} done:#{med.done?}") if $DEBUG
       count += 1 if (med.announce && med.due? && !med.done?)
     end
@@ -178,103 +185,12 @@ class MedDash
   end
 
   def reset_meds
-    # required == interval => TAKE
-    # required >  interval => Optl to TAKE
-    #
-    @meds = {}
-    @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:7.5,  required:8.5,default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,   emoji:"1F480")
-    @meds[:morphine_ir]    = Med.new(name: :morphine_ir,    interval:4,    required:5,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F480")
-    @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,    required:5,  default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,    required:5,  default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
-    @meds[:hydrocodone]    = Med.new(name: :hydrocodone,    interval:4,    required:48, default_dose:10,   half_life:3.8*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
-    @meds[:dilauded]       = Med.new(name: :dilauded,       interval:4,    required:6,  default_dose:1,    half_life:2.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
-    @meds[:baclofen]       = Med.new(name: :baclofen,       interval:23.9, required:48, default_dose:5,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"26A1")
-    @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,    required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display: :no,       display_log:true,  announce:false,  emoji:"26A1")
-    @meds[:lyrica]         = Med.new(name: :lyrica,         interval:10,   required:18, default_dose:18,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F9E0")
-    @meds[:periactin]      = Med.new(name: :periactin,      interval:6,    required:8,  default_dose:2,    half_life:7.5*3600,   max_dose:12,    dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F971")
-
-    @meds[:esgic]          = Med.new(name: :esgic,          interval:4,    required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
-    @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,    required:96, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
-    @meds[:xanax]          = Med.new(name: :xanax,          interval:4,    required:48, default_dose:0.25, half_life:6*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F630")
-    @meds[:phenergan]      = Med.new(name: :phenergan,      interval:4,    required:48, default_dose:25,   half_life:14.5*3600,  max_dose:0,     dose_units: :mg,   display: :no,       display_log:true,  announce:false,  emoji:"1F48A")
-    @meds[:propranolol]    = Med.new(name: :propranolol,    interval:4,    required:48, default_dose:80,   half_life:5*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F497")
-    @meds[:ondansetron]    = Med.new(name: :ondansetron,    interval:4,    required:48, default_dose:4,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:soma]           = Med.new(name: :soma,           interval:4,    required:48, default_dose:350,  half_life:2*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24,   required:24, default_dose:15,   half_life:1.7*3600,   max_dose:15,    dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:taurine]        = Med.new(name: :taurine,        interval:4,    required:6,  default_dose:500,  half_life:3600,       max_dose:6500,  dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F431")
-    @meds[:calcium]        = Med.new(name: :calcium,        interval:4,    required:6,  default_dose:250,  half_life:2*3600,     max_dose:1750,  dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F9B4")
-    @meds[:iron]           = Med.new(name: :iron,           interval:3,    required:4,  default_dose:10.5, half_life:5*3600,     max_dose:31.5,  dose_units: :mg,   display: :no,       display_log:true,  announce:false,  emoji:"1FA78")
-    @meds[:vitamin_d]      = Med.new(name: :vitamin_d,      interval:3,    required:4,  default_dose:1000, half_life:5*24*3600,  max_dose:3000,  dose_units: :iu,   display: :no,       display_log:false, announce:false,  emoji:"1F31E")
-    @meds[:plc]            = Med.new(name: :plc,            interval:24,   required:48, default_dose:500,  half_life:25.7*3600,  max_dose:2000,  dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:alcar]          = Med.new(name: :alcar,          interval:24,   required:24, default_dose:500,  half_life:4.2*3600,   max_dose:2000,  dose_units: :mg,   display: :on_dose,  display_log:false, announce:false,  emoji:"1F9B4")
-
-    @meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,  default_dose:500,  half_life:8*3600,    max_dose:5000,  dose_units: :mg,   display: :yes_awake, display_log:true,  announce:false,  emoji:"1F30B")
-    @meds[:magnesium]      = Med.new(name: :magnesium,      interval:4,    required:6,  default_dose:48,   half_life:4*3600,    max_dose:192,   dose_units: :mg,   display: :yes_awake, display_log:true,  announce:false,  emoji:"1F33F")
-    @meds[:nac]            = Med.new(name: :nac,            interval:24,   required:24, default_dose:500,  half_life:5.6*3600,  max_dose:2000,  dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"26FD")
-    @meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,    required:48, default_dose:50,   half_life:1.2*3600,  max_dose:900,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1FAB7")
-    @meds[:apigenin]       = Med.new(name: :apigenin,       interval:12,   required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-
-    @meds[:butyrate]       = Med.new(name: :butyrate,       interval:24,   required:48, default_dose:100,  half_life:3600,      max_dose:600,   dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:liver]          = Med.new(name: :liver,          interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:3000,  dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:marrow]         = Med.new(name: :marrow,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:3000,  dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:probiotic]      = Med.new(name: :probiotic,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:1,     dose_units: :mg,   display: :yes,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:oyster]         = Med.new(name: :oyster,         interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:fish_eggs]      = Med.new(name: :fish_eggs,      interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:juice]          = Med.new(name: :juice,          interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:phospholipid_c] = Med.new(name: :phospholipid_c, interval:24,   required:48, default_dose:1300, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:24,   required:48, default_dose:420,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F9E0")
-    @meds[:epa]            = Med.new(name: :epa,            interval:24,   required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:dha]            = Med.new(name: :dha,            interval:24,   required:48, default_dose:1000, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:famotidine]     = Med.new(name: :famotidine,     interval:4,    required:48, default_dose:20,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:hydroxyzine]    = Med.new(name: :hydroxyzine,    interval:4,    required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:marshmallow_r]  = Med.new(name: :marshmallow_r,  interval:24,   required:48, default_dose:200,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    # 137ug per spray, 2x per nostril = 548ug
-    @meds[:azelastine]     = Med.new(name: :azelastine,     interval:24,   required:48, default_dose:548,  half_life:54*3600,   max_dose:0,     dose_units: :ug,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    # 27.5ug per spray, 2x per nostril = 100ug
-    @meds[:veramyst]       = Med.new(name: :veramyst,       interval:24,   required:48, default_dose:110,  half_life:16*3600,   max_dose:0,     dose_units: :ug,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:metoclopramide] = Med.new(name: :metoclopramide, interval:24,   required:48, default_dose:10,   half_life:5*3600,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:docusate]       = Med.new(name: :docusate,       interval:3,    required:3,  default_dose:100,  half_life:3600,      max_dose:300,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A9")
-    @meds[:valerian_root]  = Med.new(name: :valerian_root,  interval:4,    required:48, default_dose:400,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4AE")
-    @meds[:calcium_aep]    = Med.new(name: :calcium_aep,    interval:4,    required:48, default_dose:1850, half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4AE")
-    @meds[:fem]            = Med.new(name: :fem,            interval:24,   required:24, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:roe]            = Med.new(name: :roe,            interval:24,   required:24, default_dose:28,   half_life:3600,      max_dose:0,     dose_units: :g,    display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:hd]             = Med.new(name: :hd,             interval:24,   required:24, default_dose:1,    half_life:3600,      max_dose:1,     dose_units: :g,    display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:phys_thr]       = Med.new(name: :phys_thr,       interval:24,   required:48, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:colostrum]      = Med.new(name: :colostrum,      interval:23,   required:48, default_dose:500,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:quercetin]      = Med.new(name: :quercetin,      interval:23,   required:48, default_dose:500,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:emiq]           = Med.new(name: :emiq,           interval:23,   required:48, default_dose:33,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:mirtazapine]    = Med.new(name: :mirtazapine,    interval:24,   required:48, default_dose:7.5,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:potassium]      = Med.new(name: :potassium,      interval:24,   required:48, default_dose:33,   half_life:3600,      max_dose:0,     dose_units: :meq,  display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:hesperidin]     = Med.new(name: :hesperidin,     interval:24,   required:48, default_dose:50,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:diosmin]        = Med.new(name: :diosmin,        interval:24,   required:48, default_dose:450,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:pea]            = Med.new(name: :pea,            interval:24,   required:48, default_dose:400,  half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:pqq]            = Med.new(name: :pqq,            interval:24,   required:48, default_dose:10,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:c60]            = Med.new(name: :c60,            interval:24,   required:48, default_dose:10,   half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:coco]           = Med.new(name: :coco,           interval:24,   required:48, default_dose:10,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:ubiquinol]      = Med.new(name: :ubiquinol,      interval:3,    required:4.5, default_dose:50,  half_life:3600*33,   max_dose:200,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
-    @meds[:biotin]         = Med.new(name: :biotin,         interval:2,    required:2,   default_dose:1,   half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F517")
-    @meds[:coq10]          = Med.new(name: :coq10,          interval:3,    required:4.5, default_dose:50,  half_life:3600*33,   max_dose:200,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
-    @meds[:herbs]          = Med.new(name: :herbs,          interval:4,    required:24, default_dose:1,    half_life:3600,      max_dose:0,     dose_units: :unit, display: :no,        display_log:false, announce:false,  emoji:"1F4A8")
-    @meds[:ergothioneine]  = Med.new(name: :ergothioneine,  interval:4,    required:6,  default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:creatine]       = Med.new(name: :creatine,       interval:24,   required:24, default_dose:1,    half_life:3600*3,    max_dose:5,     dose_units: :g,    display: :no,        display_log:false, announce:false,  emoji:"1F517")
-    @meds[:dummy]          = Med.new(name: :dummy,          interval:4,    required:6,  default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F4A6")
-    @meds[:mitoq]          = Med.new(name: :mitoq,          interval:24,   required:24, default_dose:2.5,  half_life:3600*3,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
-    @meds[:hcasein]        = Med.new(name: :hcasein,        interval:24,   required:24, default_dose:2.5,  half_life:3600*3,    max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F517")
-
-    # additional ways to match terms
-    @meds[:docusate].add_match_term("docusate sodium")
-    @meds[:azelastine].add_match_term("azelastine spray")
-    @meds[:veramyst].add_match_term("veramyst spray")
-    @meds[:morphine_er].add_match_term("morphine (er)")
-    @meds[:morphine_er].add_match_term("morphine er")
-    @meds[:morphine_ir].add_match_term("morphine (ir)")
-    @meds[:morphine_ir].add_match_term("morphine ir")
-    @meds[:phosphatidyl_c].add_match_term("pc")
-    @meds[:valerian_root].add_match_term("valerian root")
-    @meds[:fish_eggs].add_match_term("fish egg")
-    @meds[:calcium_aep].add_match_term("calcium aep")
-    @meds[:phys_thr].add_match_term("physical")
-    @meds[:phys_thr].add_match_term("physical therapy")
+    MEDS.clear
+    MED_SETS.clear
+    load("medications.rb")
+    MEDS.each do |key, med|
+      med.set_dash(self)
+    end
   end
 
   def hide_narcotics(epoch)
@@ -340,27 +256,27 @@ class MedDash
     case med
     when /morph/i
       if med.match(/er/i)
-        @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+        MEDS[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
       elsif med.match(/ir/i)
-        @meds[:morphine_ir].log(epoch_time:epoch_time, dose:dose, units:unit)
+        MEDS[:morphine_ir].log(epoch_time:epoch_time, dose:dose, units:unit)
       else
-        @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+        MEDS[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
       end
 
       # if dose == "7.5"
-      #   # @meds[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
-      #   @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+      #   # MEDS[:morphine_bt].log(epoch_time:epoch_time, dose:dose, units:unit)
+      #   MEDS[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
       # else
-      #   @meds[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
+      #   MEDS[:morphine_er].log(epoch_time:epoch_time, dose:dose, units:unit)
       # end
     when /baclo/i
       if dose == "3/4"
-        @meds[:baclofen].log(epoch_time:epoch_time, dose:7.5, units:"mg")
+        MEDS[:baclofen].log(epoch_time:epoch_time, dose:7.5, units:"mg")
       else
-        @meds[:baclofen].log(epoch_time:epoch_time, dose:dose, units:unit)
+        MEDS[:baclofen].log(epoch_time:epoch_time, dose:dose, units:unit)
       end
     when /esgic/i
-      @meds[:esgic].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:esgic].log(epoch_time:epoch_time, dose:dose, units:unit)
       if (dose.nil?)
         @logger.log("tylenol dose default 325") if $DEBUG
         tylenol_dose = 325
@@ -370,82 +286,88 @@ class MedDash
 
       # we don't want esgic to push tylenol forward, so submit current esgic as last tylenol dose time
       # should this be submitted as a 5am dose of the current day since we track the esgic anyway?
-      last_dose_time = @meds[:tylenol].last_dose
+      last_dose_time = MEDS[:tylenol].last_dose
       if last_dose_time.nil?
         last_dose_time = epoch_time - (3600 * 4)
       end
       @logger.log "logging extra tylenol with dose #{tylenol_dose} for esgic dose #{dose}" if $DEBUG
-      @meds[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
+      MEDS[:tylenol].log(epoch_time:last_dose_time, dose:tylenol_dose, units:"mg")
     when /^oxy/i
-      @meds[:oxycodone].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:oxycodone].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /lyric/i
-      @meds[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:lyrica].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /xanax/i
-      @meds[:xanax].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:xanax].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /taurine/i
-      @meds[:taurine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:taurine].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /calcium/i
-      @meds[:calcium].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:calcium].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /msm/i
-      @meds[:msm].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:msm].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /iron/i
-      @meds[:iron].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:iron].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /magnes/i
-      @meds[:magnesium].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:magnesium].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /nac/i
-      @meds[:nac].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:nac].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /vitamin\s*d/i
-      @meds[:vitamin_d].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:vitamin_d].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /theanine/i
-      @meds[:l_theanine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:l_theanine].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /apigenin/i
-      @meds[:apigenin].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:apigenin].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /liver/i
-      @meds[:liver].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:liver].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /marrow/i
-      @meds[:marrow].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:marrow].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /oyster/i
-      @meds[:oyster].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:oyster].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /phospholipid/i
-      @meds[:phospholipid_c].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:phospholipid_c].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /epa/i
-      @meds[:epa].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:epa].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /dha/i
-      @meds[:dha].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:dha].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /phenergan/i
-      @meds[:phenergan].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:phenergan].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /famotidine/i
-      @meds[:famotidine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:famotidine].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /hydroxyzine/i
-      @meds[:hydroxyzine].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:hydroxyzine].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /propranolol/i
-      @meds[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /propanolol/i
-      @meds[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:propranolol].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /marshmallow/i
-      @meds[:marshmallow_r].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:marshmallow_r].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /soma/i
-      @meds[:soma].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:soma].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /ondansetron/i
-      @meds[:ondansetron].log(epoch_time:epoch_time, dose:dose, units:unit)
+      MEDS[:ondansetron].log(epoch_time:epoch_time, dose:dose, units:unit)
     when /pc/i
       if dose == "1/4"
-        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:105, units:"mg")
+        MEDS[:phosphatidyl_c].log(epoch_time:epoch_time, dose:105, units:"mg")
       elsif dose == "1/2"
-        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:210, units:"mg")
+        MEDS[:phosphatidyl_c].log(epoch_time:epoch_time, dose:210, units:"mg")
       else
-        @meds[:phosphatidyl_c].log(epoch_time:epoch_time, dose:dose)
+        MEDS[:phosphatidyl_c].log(epoch_time:epoch_time, dose:dose)
       end
     else
       return if med.match(/^L$/)
 
-      @meds.each do |med_name, med_entry|
+      MEDS.each do |med_name, med_entry|
         if med_entry.match?(med)
           med_entry.log(epoch_time:epoch_time, dose:dose, units:unit)
           next
         end
       end
     end
+  end
+
+  def bump_set(epoch_time:)
+    @current_set_index += 1
+    @current_set_bump_epoch = epoch_time
+    @current_set_index = 0 if MED_SETS[@current_set_index].nil?
   end
 
   def update_status(str)
@@ -543,7 +465,7 @@ class MedDash
   end
 
   def skip(med, epoch)
-    @meds.each do |med_name, med_entry|
+    MEDS.each do |med_name, med_entry|
       if med_entry.match?(med) && epoch > Med.last_5am_epoch
         med_entry.skip_today
         next
@@ -552,7 +474,7 @@ class MedDash
   end
 
   def show(med, epoch)
-    @meds.each do |med_name, med_entry|
+    MEDS.each do |med_name, med_entry|
       if med_entry.match?(med) && epoch > Med.last_5am_epoch
         med_entry.show_today
         next
@@ -561,7 +483,7 @@ class MedDash
   end
 
   def hide(med, epoch)
-    @meds.each do |med_name, med_entry|
+    MEDS.each do |med_name, med_entry|
       if med_entry.match?(med) && epoch > Med.last_5am_epoch
         med_entry.hide_today
         next
@@ -570,7 +492,7 @@ class MedDash
   end
 
   def im_awake
-    @meds.each do |med_name, med_entry|
+    MEDS.each do |med_name, med_entry|
       med_entry.im_awake
     end
   end
@@ -579,6 +501,7 @@ class MedDash
     reset_meds
     @errors = ""
     @notes = ""
+    @current_set_index = 0
     db = IMessageChatDB.new
 
     db.get.each do |message|
@@ -611,6 +534,10 @@ class MedDash
           update_status($1.strip)
         when /^[Aa]uto[Nn]:/
           @auto_show_narcotic ? @auto_show_narcotic = false : @auto_show_narcotic = true
+        when /^1unit set/
+          if (message_epoch > Med.last_5am_epoch)
+            bump_set(epoch_time:message_epoch)
+          end
         when /^[0-9]+:[0-9][0-9]:[0-9][0-9]\s*/ # 10:00:00
           @logger.log("Parser matched time in xx:xx:xx format: #{line}") if $DEBUG
         when /[0-9]+:[0-9][0-9]:[0-9][0-9]\s*[aApP]/ # 10:32:15p
@@ -654,7 +581,7 @@ class MedDash
     s = ""
 
     log_records = []
-    meds.each_pair do |med, log|
+    MEDS.each_pair do |med, log|
       next unless log.display_log
       next unless show?(med.to_s)
 
@@ -680,12 +607,30 @@ class MedDash
     s
   end
 
+  def set_dash
+    return "" if MED_SETS[@current_set_index].nil?
+
+    total_increments = @manual_set_increments + @current_set_index
+    index = total_increments % MED_SETS.length
+
+    # Header
+    # Next Set: Pre Set
+    s = "#{ANSI.clear_line}\r#{Colors.yellow_bold}Set: #{Colors.reset}#{MED_SETS[index][:label]}#{ANSI.clear_line_right}\n#{ANSI.clear_line_right}\n"
+
+    MED_SETS[index][:set].each do |set|
+      med = set[:med]
+      dose = set[:dose]
+      s += "#{med.emoji} #{sprintf("%-18s", med.name)} Dose:#{Colors.c226}#{sprintf("%-15s", dose)}#{Colors.reset} #{med.to_set_s}\n"
+    end
+    s
+  end
+
   def dash
     crack_meds
     s = "#{dashboard_header}#{ANSI.clear_line_right}\n#{ANSI.clear_line_right}\n"
 
     # Short Dash of Once-a-day entries
-    meds.each_pair do |med, log|
+    MEDS.each_pair do |med, log|
       next if log.interval != 24
       next unless log.display == :yes || log.display == :yes_awake || log.display == :on_dose
       next unless show?(med.to_s)
@@ -706,7 +651,7 @@ class MedDash
     s += "#{ANSI.clear_line_right}\n"
     s += "#{ANSI.clear_line}\n"
 
-    meds.each_pair do |med, log|
+    MEDS.each_pair do |med, log|
       next if log.interval == 24
       next unless log.display == :yes || log.display == :yes_awake || log.display == :on_dose
       if log.display == :on_dose
@@ -724,8 +669,11 @@ class MedDash
     end
 
     s += "#{line(color: 250)}\n"
-    s += "#{log_header}\n"
-    s += log_dash
+
+    s += "#{set_dash}#{ANSI.clear_line_right}\n"
+
+    # s += "#{log_header}\n"
+    # s += log_dash
 
     s
   end
@@ -782,7 +730,7 @@ class MedDash
   end
 
   def dash_update_interval
-    1
+    0
   end
 
   # after printing everything, there can be leftover text from the prior loop
@@ -825,7 +773,7 @@ class MedDash
       save_data[:date] = yesterday_date
       save_data[:totals] = []
 
-      meds.each_pair do |med, log|
+      MEDS.each_pair do |med, log|
         totals_data = {}
         totals_data[:med] = med
         totals_data[:total_dose] = log.total_dose_yesterday
@@ -999,6 +947,8 @@ class MedDash
             @muted = true
             @display_dash = true
           end
+        when "k"
+          @manual_set_increments += 1
         when "q"
           exit
         end
