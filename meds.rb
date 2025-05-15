@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.6.18"
+    @version = "4.6.19"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -192,6 +192,8 @@ class MedDash
     @meds[:robaxin]        = Med.new(name: :robaxin,        interval:2,    required:10, default_dose:500,  half_life:1.1*3600,   max_dose:0,     dose_units: :mg,   display: :no,       display_log:true,  announce:false,  emoji:"26A1")
     @meds[:lyrica]         = Med.new(name: :lyrica,         interval:10,   required:18, default_dose:18,   half_life:6.3*3600,   max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F9E0")
     @meds[:periactin]      = Med.new(name: :periactin,      interval:6,    required:8,  default_dose:2,    half_life:7.5*3600,   max_dose:12,    dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F971")
+    @meds[:choline]        = Med.new(name: :choline,        interval:6,    required:8,  default_dose:6.25, half_life:10*3600,    max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:false, announce:false,  emoji:"1F971")
+    #    @meds[:choline_b] = Med.new(name: :choline_bitartrate,  interval:6,    required:8,  default_dose:6.25, half_life:10*3600,    max_dose:0,     dose_units: :mg,   display: :yes,      display_log:false, announce:false,  emoji:"1F971")
 
     @meds[:esgic]          = Med.new(name: :esgic,          interval:4,    required:48, default_dose:1,    half_life:35*3600,    max_dose:0,     dose_units: :unit, display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
     @meds[:tylenol]        = Med.new(name: :tylenol,        interval:4,    required:96, default_dose:500,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F915")
