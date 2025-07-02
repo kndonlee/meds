@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.7.2"
+    @version = "4.7.3"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -203,7 +203,7 @@ class MedDash
     @meds[:lansoprazole]   = Med.new(name: :lansoprazole,   interval:24,   required:24, default_dose:15,   half_life:1.7*3600,   max_dose:15,    dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F48A")
 
     @meds[:cdp]            = Med.new(name: :cdp,            interval:4,    required:48, default_dose:420,  half_life:3600,       max_dose:0,     dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"26A1")
-    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:4,    required:48, default_dose:420,  half_life:3600,       max_dose:0,     dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"1F9E0")
+    @meds[:phosphatidyl_c] = Med.new(name: :phosphatidyl_c, interval:4,    required:48, default_dose:420,  half_life:24*3600,    max_dose:0,     dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"1F9E0")
     @meds[:choline_b]      = Med.new(name: :choline_b,      interval:6.5,  required:6.5,default_dose:6.25, half_life:10*3600,    max_dose:0,     dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"1F971")
 
     @meds[:taurine]        = Med.new(name: :taurine,        interval:4,    required:96, default_dose:500,  half_life:3600,       max_dose:6500,  dose_units: :mg,   display: :yes,      display_log:true,  announce:false,  emoji:"1F431")
