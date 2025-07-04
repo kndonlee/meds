@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.7.3"
+    @version = "4.7.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -185,7 +185,7 @@ class MedDash
     @meds[:morphine_er]    = Med.new(name: :morphine_er,    interval:7.5,  required:8.5,default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F480")
     @meds[:morphine_ir]    = Med.new(name: :morphine_ir,    interval:4,    required:5,  default_dose:15,   half_life:3.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F480")
     @meds[:morphine_bt]    = Med.new(name: :morphine_bt,    interval:8,    required:5,  default_dose:7.5,  half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :no,       display_log:false, announce:false,  emoji:"1F48A")
-    @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,    required:5,  default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
+    @meds[:oxycodone]      = Med.new(name: :oxycodone,      interval:4,    required:96, default_dose:5,    half_life:3*3600,     max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
     @meds[:hydrocodone]    = Med.new(name: :hydrocodone,    interval:4,    required:48, default_dose:10,   half_life:3.8*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
     @meds[:dilauded]       = Med.new(name: :dilauded,       interval:4,    required:6,  default_dose:1,    half_life:2.5*3600,   max_dose:0,     dose_units: :mg,   display: :on_dose,  display_log:true,  announce:false,  emoji:"1F48A")
     @meds[:baclofen]       = Med.new(name: :baclofen,       interval:23.9, required:12, default_dose:5,    half_life:4*3600,     max_dose:0,     dose_units: :mg,   display: :yes,      display_log:false, announce:false,  emoji:"1F535")
