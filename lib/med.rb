@@ -82,6 +82,14 @@ class Med
     @sleeping = false
   end
 
+  def epoch_adjust(reduce)
+    if @dose_log.last.nil?
+      return
+    else
+      @dose_log.last.epoch_time -= reduce
+    end
+  end
+
   def skip_today
     @skip = true
   end

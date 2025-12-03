@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.7.7"
+    @version = "4.8.0"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -156,7 +156,7 @@ class MedDash
 
     rows, cols = STDOUT.winsize
     row_cols =  "#{Colors.yellow_bold}Window:#{Colors.purple_bold}#{rows}x#{cols}"
-    actions_usage = "#{Colors.yellow_bold}Actions:#{Colors.purple_bold}Skip:#{Colors.yellow_bold}|#{Colors.purple_bold}Show:#{Colors.yellow_bold}|#{Colors.purple_bold}Hide:#{Colors.yellow_bold}|\u{1F31E}"
+    actions_usage = "#{Colors.yellow_bold}Actions:#{Colors.purple_bold}Adjust:#{Colors.yellow_bold}|#{Colors.purple_bold}Skip:#{Colors.yellow_bold}|#{Colors.purple_bold}Show:#{Colors.yellow_bold}|#{Colors.purple_bold}Hide:#{Colors.yellow_bold}|\u{1F31E}"
     auto_narcotic = "#{Colors.yellow_bold}AutoN: #{@auto_show_narcotic ? $checkbox_emoji : $cross_emoji}"
 
     if $HIDE_FORBIDDEN
@@ -557,6 +557,15 @@ class MedDash
     end
   end
 
+  def adjust(med, reduce_secs, epoch)
+    @meds.each do |med_name, med_entry|
+      if med_entry.match?(med) && epoch > Med.last_5am_epoch
+        med_entry.epoch_adjust(reduce_secs)
+        next
+      end
+    end
+  end
+
   def show(med, epoch)
     @meds.each do |med_name, med_entry|
       if med_entry.match?(med) && epoch > Med.last_5am_epoch
@@ -599,6 +608,12 @@ class MedDash
         when /^[Nn]ote/
           puts "line case 9: #{line}" if $DEBUG
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
+        when /^[Aa]djust:\s*([0-9]+)\s+([A-Za-z+_]+)\s*$/ # Adjust: 15 morphine_ir
+          @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line}#{Colors.reset}\n"
+          med = $2.strip
+          reduce_seconds = $1.strip.to_i * 60 # input by user as minutes
+          @notes += "adjusting #{med} by #{reduce_seconds}\n"
+          adjust(med, reduce_seconds, message_epoch)
         when /^[Ss]kip:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
           skip($1.strip, message_epoch)
