@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.8.0"
+    @version = "4.8.1"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -608,21 +608,32 @@ class MedDash
         when /^[Nn]ote/
           puts "line case 9: #{line}" if $DEBUG
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line.gsub(/Note:?\s*/,"")}#{Colors.reset}\n"
-        when /^[Aa]djust:\s*([0-9]+)\s+([A-Za-z+_]+)\s*$/ # Adjust: 15 morphine_ir
+        when /^[Aa]djust:\s*([0-9]+)\s+([A-Za-z+_ ]+)\s*$/ # Adjust: 15 morphine_ir
           @notes += "#{Time.at(message_epoch).strftime("%m/%d %H:%M")} #{Colors.cyan}#{line}#{Colors.reset}\n"
-          med = $2.strip
+          meds = $2.strip.split("\s+")
           reduce_seconds = $1.strip.to_i * 60 # input by user as minutes
-          @notes += "adjusting #{med} by #{reduce_seconds}\n"
-          adjust(med, reduce_seconds, message_epoch)
+          meds.each do |med|
+            @notes += "adjusting #{med} by #{reduce_seconds}\n"
+            adjust(med, reduce_seconds, message_epoch)
+          end
         when /^[Ss]kip:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
-          skip($1.strip, message_epoch)
+          meds=$1.strip.split("\s+")
+          meds.each do |med|
+            skip(med, message_epoch)
+          end
         when /^[Hh]ide:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
-          hide($1.strip, message_epoch)
+          meds=$1.strip.split("\s+")
+          meds.each do |med|
+            hide(med, message_epoch)
+          end
         when /^[Ss]how:\s*([A-Za-z()_\s]+)$/
           puts "line case 10: #{line}" if $DEBUG
-          show($1.strip, message_epoch)
+          meds=$1.strip.split("\s+")
+          meds.each do |med|
+            show(med, message_epoch)
+          end
         when @@sun_emoji_regex
           @logger.log("Parser matched awake signal, marking all meds as awake") if $DEBUG
           im_awake
