@@ -64,7 +64,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.8.3"
+    @version = "4.8.4"
     @hostname = `hostname`.strip
     reset_meds
 
@@ -103,11 +103,6 @@ class MedDash
         sleep interval
       end
     end
-  end
-
-  def reset_bluetooth
-    system("say 'restarting bluetooth daemon'")
-    system("osascript -e 'do shell script \"killall bluetoothd\" with administrator privileges'")
   end
 
   def announce_meds_due(manual=true)
@@ -1022,8 +1017,6 @@ class MedDash
         when "n"
           @mode = "n"
           @display_notes = true
-        when "b"
-          reset_bluetooth
         when "m"
           if @muted
             @muted = false
