@@ -11,15 +11,19 @@ end
 
 app_path = File.dirname($PROGRAM_NAME)
 
+chat_ids = []
 chat_id_path = "#{app_path}/chatid"
 if File.readable?(chat_id_path)
-  chat_id = File.read(chat_id_path).strip
-else
-  # donalds chatid
-  chat_id = "chat574232935236064109"
+  chat_ids = File.readlines(chat_id_path).map(&:strip).reject(&:empty?)
+end
+
+if chat_ids.empty?
+  raise "status=ERROR error=NO_CHAT_IDS file=#{chat_id_path}"
 end
 
 query_history = 365 * 86400 * 2
+
+chat_ids_sql = chat_ids.map { |id| "'#{id.gsub("'", "''")}'" }.join(",")
 
 db_query = "SELECT
     message.is_from_me,
@@ -34,7 +38,7 @@ FROM
     JOIN chat_message_join ON chat. \"ROWID\" = chat_message_join.chat_id
     JOIN message ON chat_message_join.message_id = message. \"ROWID\"
 WHERE
-     chat.chat_identifier LIKE \"#{chat_id}\"
+     chat.chat_identifier IN (#{chat_ids_sql})
      AND (now_epoch-message_epoch) <= #{query_history}
 ORDER BY
     message_date ASC"
@@ -91,4 +95,3 @@ db_results_parsed.each do |r|
 #    puts r[5]
 #  end
 end
-
