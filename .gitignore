@@ -3,3 +3,11 @@ Gemfile.lock
 chatid
 .idea
 *.iml
+
+# kasa daemon: credentials, venv, generated Stream Deck button apps
+kasa/kasa.conf*
+!kasa/kasa.conf.example
+kasa/.venv/
+kasa/buttons/
+kasa/.kasa-cache.json
+kasa/__pycache__/

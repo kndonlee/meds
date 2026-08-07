@@ -1,0 +1,56 @@
+# Copy to kasa.conf and fill in. kasa.conf is gitignored -- never commit it.
+#
+#   cp kasa.conf.example kasa.conf && chmod 600 kasa.conf
+
+[auth]
+# Your TP-Link / Kasa app account. Used ONLY for the local KLAP handshake
+# with the strips on your LAN -- the daemon never calls TP-Link's cloud.
+username = you@example.com
+password = your-kasa-password
+
+[devices]
+# LEAVE THIS EMPTY to auto-adopt every Kasa device on the network. That is the
+# recommended setup: nothing to maintain, and new strips show up on their own.
+#
+# Pin entries only if you want to ignore some devices or force stable internal
+# names. Identify them by MAC -- never by IP. MACs survive power outages, DHCP
+# reshuffles and router reboots; IPs do not.
+#
+#   strip1 = E4-FA-C4-56-11-33
+#   strip2 = 28-87-BA-46-7C-D9
+#   strip3 = E4-FA-C4-56-14-35
+#
+# An IP here is accepted but treated as a first-guess hint only. The daemon
+# still verifies which MAC actually answered, and re-broadcasts to relocate the
+# device if it moved. Current IPs are cached in .kasa-cache.json (also
+# gitignored) and refreshed automatically.
+
+[server]
+# 127.0.0.1 keeps this machine-local. Use 0.0.0.0 to let other devices on the
+# LAN (phone, a second Stream Deck) hit it too.
+host = 127.0.0.1
+port = 8787
+
+# Seconds before cached outlet state is re-read from the device. The poller
+# keeps things warm, so a press almost never pays this cost.
+stale_after = 5
+
+# How often to refresh every device. Doubles as the keepalive that holds KLAP
+# sessions open, and as the health check that notices a strip has moved.
+poll_interval = 30
+
+# Broadcast address for discovery sweeps. Blank auto-detects, trying
+# 255.255.255.255 then your local /24. Set it explicitly if your router
+# filters global broadcast, e.g. 192.168.1.255
+broadcast =
+
+# Seconds to listen for replies during a discovery sweep.
+discovery_timeout = 5
+
+[aliases]
+# Optional friendly names. Left side is what you call it, right side is an
+# auto-derived alias or a positional strip1/0 .. strip1/5 reference.
+# Run `./kasactl list` to see everything that already resolves.
+#
+# lights = desk-lamp
+# rig    = strip2/3

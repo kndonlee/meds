@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+#
+# Thin wrapper so you never have to remember the venv path.
+#
+#   ./kasactl list                 every outlet and its alias
+#   ./kasactl run                  run the daemon in the foreground
+#   ./kasactl toggle <alias>       hit a running daemon
+#   ./kasactl on|off|state <alias>
+#   ./kasactl health               which strips are reachable, and where
+#   ./kasactl rediscover           force a broadcast rescan after an outage
+#   ./kasactl install-service      keep it running via launchd
+#   ./kasactl uninstall-service
+#   ./kasactl restart
+#   ./kasactl logs
+
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PY=".venv/bin/python"
+PLIST_LABEL="com.kndonlee.kasad"
+PLIST_PATH="$HOME/Library/LaunchAgents/${PLIST_LABEL}.plist"
+LOG_DIR="$HOME/Library/Logs"
+
+[[ -x $PY ]] || { echo "Run ./setup.sh first." >&2; exit 1; }
+
+port() {
+  awk -F= '/^\[server\]/{s=1;next} /^\[/{s=0} s&&/^ *port/{gsub(/ /,"",$2);print $2}' \
+    kasa.conf 2>/dev/null | head -1
+}
+PORT="$(port)"; PORT="${PORT:-8787}"
+
+cmd="${1:-}"; shift || true
+
+case "$cmd" in
+  list)
+    exec "$PY" kasad.py --list-only "$@"
+    ;;
+  run)
+    exec "$PY" kasad.py "$@"
+    ;;
+  toggle|on|off|state)
+    alias="${1:?usage: kasactl $cmd <alias>}"
+    curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/${cmd}/${alias}" && echo
+    ;;
+  health)
+    curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/healthz" && echo
+    ;;
+  rediscover)
+    curl -fsS --max-time 30 "http://127.0.0.1:${PORT}/rediscover" && echo
+    ;;
+  install-service)
+    mkdir -p "$HOME/Library/LaunchAgents"
+    cat > "$PLIST_PATH" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${PLIST_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(pwd)/${PY}</string>
+    <string>$(pwd)/kasad.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>$(pwd)</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>${LOG_DIR}/kasad.log</string>
+  <key>StandardErrorPath</key><string>${LOG_DIR}/kasad.log</string>
+</dict>
+</plist>
+PLIST
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    launchctl load "$PLIST_PATH"
+    echo "Loaded ${PLIST_LABEL}. Logs: ${LOG_DIR}/kasad.log"
+    ;;
+  uninstall-service)
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    rm -f "$PLIST_PATH"
+    echo "Removed ${PLIST_LABEL}."
+    ;;
+  restart)
+    launchctl kickstart -k "gui/$(id -u)/${PLIST_LABEL}"
+    echo "Restarted."
+    ;;
+  logs)
+    tail -f "${LOG_DIR}/kasad.log"
+    ;;
+  *)
+    sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+    exit 1
+    ;;
+esac
