@@ -179,7 +179,14 @@ class Fleet:
     # -- discovery --------------------------------------------------------
 
     async def sweep(self, force=False):
-        """Broadcast for every Kasa device. Returns {mac: (ip, Device)}."""
+        """Broadcast for every Kasa device. Returns {mac: (ip, alias)}.
+
+        Discovery builds a Device -- and an aiohttp session -- for everything
+        it finds, but _attach() opens its own connection afterwards. Keeping
+        those objects would leak a session per device per sweep ("Unclosed
+        client session"), so only the address and name are retained and every
+        discovered device is disconnected before returning.
+        """
         async with self.lock:
             age = time.monotonic() - self.last_sweep
             if not force and age < REDISCOVER_COOLDOWN and self.last_result:
@@ -203,20 +210,24 @@ class Fleet:
                 for ip, dev in devices.items():
                     mac = norm_mac(getattr(dev, "mac", "") or "")
                     if mac:
-                        found[mac] = (ip, dev)
+                        found[mac] = (ip, getattr(dev, "alias", "") or "")
+                    try:
+                        await dev.disconnect()
+                    except Exception:
+                        pass
                 if found:
                     break                 # first target that works is enough
 
             self.last_sweep = time.monotonic()
             self.last_result = found
-            for mac, (ip, _dev) in found.items():
+            for mac, (ip, _alias) in found.items():
                 self.cache[mac] = ip
             self.save_cache()
             log.info("discovery found %d device(s)", len(found))
             return found
 
     async def find(self, mac, force=False):
-        """Locate one device by MAC. Returns (ip, Device) or None."""
+        """Locate one device by MAC. Returns (ip, alias) or None."""
         found = await self.sweep(force=force)
         return found.get(norm_mac(mac))
 
@@ -317,7 +328,7 @@ class Strip:
             raise RuntimeError("no device with MAC %s on the network"
                                % pretty_mac(self.mac))
 
-        ip, _dev = located
+        ip, _alias = located
         await self._attach(ip)
         return self.device
 
@@ -515,8 +526,8 @@ class Daemon:
         found = await self.fleet.sweep(force=True)
         if not found:
             log.error("no Kasa devices found on the network")
-        for mac, (ip, dev) in sorted(found.items(), key=lambda kv: kv[1][0]):
-            name = slugify(getattr(dev, "alias", "") or "kasa-%s" % mac[-4:])
+        for mac, (ip, alias) in sorted(found.items(), key=lambda kv: kv[1][0]):
+            name = slugify(alias or "kasa-%s" % mac[-4:])
             strip = Strip(self.fleet, mac, name, host=ip,
                           stale_after=self.stale_after)
             try:
@@ -541,6 +552,14 @@ class Daemon:
     def resolve(self, alias):
         alias = alias.lower()
         return self.outlets.get(alias) or self.outlets.get(slugify(alias))
+
+    async def shutdown(self):
+        """Close every device session explicitly, rather than letting the
+        garbage collector complain about unclosed aiohttp connectors."""
+        for strip in self.strips:
+            if strip.device is not None:
+                await strip._close(strip.device)
+                strip.device = None
 
     async def poller(self):
         """Keep sessions warm; relocate anything that wandered off."""
@@ -706,6 +725,7 @@ async def main_async(args):
                          slugify(child.alias)))
             if not strip.device.children:
                 print("    (single outlet)  alias: %s" % slugify(strip.device.alias))
+        await daemon.shutdown()
         return
 
     host = conf.get("server", "host", fallback="127.0.0.1")
@@ -722,6 +742,7 @@ async def main_async(args):
     finally:
         poller.cancel()
         await runner.cleanup()
+        await daemon.shutdown()
 
 
 def main():
