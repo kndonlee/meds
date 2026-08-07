@@ -47,6 +47,39 @@ def _msg_id():
     return time.strftime("%Y%m%d%H%M%S") + "000"
 
 
+# Recharge below this fraction. 27% on a 2-cell pack is ~6.8V, i.e. 3.4V per
+# cell -- the point where the Li-ion discharge curve turns steep and a motor
+# can start failing to finish a full travel.
+LOW_BATTERY_PERCENT = 27
+
+
+def battery_percent(voltage):
+    """Voltage -> percent, matching the reference motionblinds implementation.
+
+    The pack size is inferred from the voltage range, since the bridge reports
+    volts and never says which pack is fitted:
+
+        2 cell   6.2 - 8.4 V     (what these shades use)
+        3 cell  10.27 - 12.34 V
+        4 cell  14.6 - 16.8 V
+
+    Readings taken while a motor is running sag under load and read low.
+    """
+    if voltage is None or voltage <= 0.0:
+        return None
+    if voltage >= 100.0:
+        return None                       # mains-powered motor
+    if voltage <= 9.4:
+        pct = (voltage - 6.2) * 100 / (8.4 - 6.2)
+    elif voltage <= 13.6:
+        pct = (voltage - 10.27) * 100 / (12.34 - 10.27)
+    elif voltage <= 19.0:
+        pct = (voltage - 14.6) * 100 / (16.8 - 14.6)
+    else:
+        return None
+    return max(0, min(100, round(pct)))
+
+
 def _subnet_hosts():
     """Every address in the local /24, for the unicast sweep."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -133,6 +166,15 @@ class Shade:
     def battery(self):
         raw = self.state.get("batteryLevel")
         return round(raw / 100.0, 2) if isinstance(raw, int) else None
+
+    @property
+    def battery_percent(self):
+        return battery_percent(self.battery)
+
+    @property
+    def battery_low(self):
+        pct = self.battery_percent
+        return pct is not None and pct <= LOW_BATTERY_PERCENT
 
     @property
     def rssi(self):

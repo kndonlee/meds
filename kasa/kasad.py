@@ -677,7 +677,8 @@ async def handle_shade(request):
     return web.json_response({
         "ok": True, "shade": shade.alias, "action": action,
         "target": target, "position": shade.position,
-        "battery": shade.battery, "ms": ms,
+        "battery": shade.battery, "battery_percent": shade.battery_percent,
+        "battery_low": shade.battery_low, "ms": ms,
         "note": "0 = open, 100 = closed",
     })
 
@@ -706,6 +707,8 @@ async def handle_list(request):
             shades.append({
                 "alias": shade.alias, "mac": shade.mac,
                 "position": shade.position, "battery": shade.battery,
+                "battery_percent": shade.battery_percent,
+                "battery_low": shade.battery_low,
                 "rssi": shade.rssi, "moving": shade.moving,
                 "writable": daemon.blinds.has_key,
             })
@@ -845,9 +848,11 @@ async def main_async(args):
                      "" if b.has_key else "   [READ-ONLY: no key configured]"))
             for shade in daemon.blinds.unique():
                 pos = shade.position
-                print("    %-16s %s%% closed   battery %sV   rssi %s   mac: %s"
+                print("    %-16s %s%% closed   battery %sV (%s%%)%s   rssi %s   mac: %s"
                       % (shade.alias, "?" if pos is None else pos,
-                         shade.battery, shade.rssi, shade.mac))
+                         shade.battery, shade.battery_percent,
+                         "  LOW - RECHARGE" if shade.battery_low else "",
+                         shade.rssi, shade.mac))
             if not b.has_key:
                 print("\n  To enable movement, put the 16-character key in "
                       "[blinds] of kasa.conf:")

@@ -205,6 +205,28 @@ exposed. Shades get ordinal names (`shade-1`…) until you map them in
   bridge accepts the command and reports the *target*; the poller corrects the
   cached position once the motor arrives. `stop` is there for mid-travel.
 
+### Battery
+
+The bridge reports raw volts; `battery_percent` and `battery_low` are derived
+using the same piecewise scale the reference `motionblinds` library uses. These
+motors carry **2-cell (2S Li-ion) packs**:
+
+| Voltage | Level |
+|---|---|
+| 8.4 V | 100% — fully charged |
+| 7.4 V | ~55% — nominal resting voltage |
+| 6.8 V | 27% — `battery_low`, recharge around here |
+| 6.2 V | 0% — empty |
+
+`percent = (V - 6.2) / 2.2 x 100`. Below ~6.8V you are at 3.4V per cell, where
+the discharge curve turns steep and a motor can fail to finish a full travel.
+
+Voltage **sags under load**, so a reading taken during travel looks lower than
+the true resting level. The poller samples at rest between moves.
+
+3-cell (10.27-12.34 V) and 4-cell (14.6-16.8 V) packs are handled too, inferred
+from the voltage range, since the bridge never says which pack is fitted.
+
 ### Stream Deck
 
 Preset keys are the most predictable mapping, since each is idempotent — the
