@@ -173,6 +173,13 @@ class Shade:
         return round(raw / 100.0, 2) if isinstance(raw, int) else None
 
     @property
+    def charging(self):
+        """True while the pack is on a charger. The bridge reports this only
+        after the motor next checks in, so it can lag a plug-in by minutes --
+        these motors sleep between reports to save power."""
+        return self.state.get("chargingState") == 1
+
+    @property
     def battery_percent(self):
         return battery_percent(self.battery)
 

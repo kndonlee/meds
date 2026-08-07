@@ -250,6 +250,12 @@ class Outlet:
         self.strip = strip
         self.child_id = child_id
         self.child_index = child_index
+        self.commanded = None       # what we last told it to do
+        self.commanded_at = 0.0
+
+    def remember(self, state):
+        self.commanded = state
+        self.commanded_at = time.monotonic()
 
     @property
     def device(self):
@@ -267,6 +273,14 @@ class Outlet:
 
     @property
     def is_on(self):
+        # turn_on/turn_off leave the device's cached sysinfo untouched, so
+        # trust the command we just issued until a real read supersedes it.
+        # Without this, /list reports the pre-command state and the UI's
+        # optimistic flip visibly reverts.
+        if self.commanded is not None:
+            if self.strip.updated_at <= self.commanded_at:
+                return self.commanded
+            self.commanded = None
         dev = self.device
         return bool(dev and dev.is_on)
 
@@ -413,8 +427,12 @@ class Strip:
                 await self._invoke(outlet, method)
                 if self.on_topology_change:
                     self.on_topology_change()
-            self.updated_at = 0.0     # state changed; re-read before next use
+
+            outlet.remember(method == "turn_on")
             self.error = None
+        # Confirm out of band: the caller already knows the outcome, and the
+        # remembered state keeps /list correct until this lands.
+        asyncio.create_task(self._settle())
 
     async def _invoke(self, outlet, method):
         target = outlet.device
@@ -422,6 +440,12 @@ class Strip:
             raise RuntimeError("outlet %s not present on %s"
                                % (outlet.alias, self.name))
         await getattr(target, method)()
+
+    async def _settle(self):
+        try:
+            await self.refresh()
+        except Exception as exc:
+            log.debug("%s: confirming read failed: %s", self.name, exc)
 
     async def refresh(self):
         async with self.lock:
@@ -451,12 +475,11 @@ class Strip:
                 outlet = Outlet(slugify(child.alias), self,
                                 getattr(child, "device_id", None), idx)
                 found[outlet.alias] = outlet
-                found["%s/%d" % (self.name, idx)] = Outlet(
-                    "%s/%d" % (self.name, idx), self,
-                    getattr(child, "device_id", None), idx)
+                found["%s/%d" % (self.name, idx)] = outlet
         else:
-            found[slugify(dev.alias)] = Outlet(slugify(dev.alias), self)
-            found[self.name] = Outlet(self.name, self)
+            outlet = Outlet(slugify(dev.alias), self)
+            found[outlet.alias] = outlet
+            found[self.name] = outlet
         return found
 
 
@@ -682,7 +705,7 @@ async def handle_shade(request):
         "ok": True, "shade": shade.alias, "action": action,
         "target": target, "position": shade.position,
         "battery": shade.battery, "battery_percent": shade.battery_percent,
-        "battery_low": shade.battery_low, "ms": ms,
+        "battery_low": shade.battery_low, "charging": shade.charging, "ms": ms,
         "max_position": shade.max_position,
         "note": "0 = open, 100 = closed",
     }
@@ -697,6 +720,19 @@ async def handle_shade(request):
 
 async def handle_list(request):
     daemon = request.app["daemon"]
+
+    # The web UI polls this, so it is the read path that has to be honest.
+    # Refresh anything past its staleness window -- concurrently, so the cost
+    # is one device round trip rather than the sum of them -- otherwise a
+    # change made from a physical button or the vendor app stays invisible
+    # until the slow background poller catches it.
+    stale = [s.refresh_if_stale() for s in daemon.strips if s.device is not None]
+    if daemon.blinds is not None:
+        stale += [sh.refresh_if_stale(daemon.blinds.stale_after)
+                  for sh in daemon.blinds.unique()]
+    if stale:
+        await asyncio.gather(*stale, return_exceptions=True)
+
     seen, items = set(), []
     # Human aliases before positional ones ("strip1/0"), so 'primary' lands on
     # the readable name rather than whichever happens to sort first.
@@ -721,6 +757,7 @@ async def handle_list(request):
                 "position": shade.position, "battery": shade.battery,
                 "battery_percent": shade.battery_percent,
                 "battery_low": shade.battery_low,
+                "charging": shade.charging,
                 "rssi": shade.rssi, "moving": shade.moving,
                 "writable": daemon.blinds.has_key,
                 "max_position": shade.max_position,
@@ -833,7 +870,8 @@ async def main_async(args):
                 print("    %-16s %s%% closed   battery %sV (%s%%)%s   rssi %s   mac: %s"
                       % (shade.alias, "?" if pos is None else pos,
                          shade.battery, shade.battery_percent,
-                         "  LOW - RECHARGE" if shade.battery_low else "",
+                         "  CHARGING" if shade.charging else
+                         ("  LOW - RECHARGE" if shade.battery_low else ""),
                          shade.rssi, shade.mac))
             if not b.has_key:
                 print("\n  To enable movement, put the 16-character key in "

@@ -119,6 +119,9 @@ button { font: inherit; cursor: pointer; }
 .batt-bar { display: block; flex: none; width: 62px; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
 .batt-fill { display: block; height: 100%; background: var(--amber); transition: width .4s ease; }
 .batt.low { color: var(--rust); }
+.batt.charging { color: var(--teal); }
+.batt.charging .batt-fill { background: var(--teal); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
 .batt.low .batt-fill { background: var(--rust); }
 .limit-note { color: var(--rust); }
 
@@ -251,11 +254,11 @@ function shadeCard(s) {
         <button class="btn" data-act="stop" data-shade="${esc(s.alias)}" ${s.writable ? "" : "disabled"}>Stop</button>
       </div>
 
-      <div class="batt ${s.battery_low ? "low" : ""}">
+      <div class="batt ${s.charging ? "charging" : ""} ${s.battery_low && !s.charging ? "low" : ""}">
         <span class="batt-bar"><span class="batt-fill" style="width:${pct ?? 0}%"></span></span>
         <span>${pct ?? "–"}%</span>
         <span>${s.battery ?? "–"} V</span>
-        ${s.battery_low ? "<span>· recharge</span>" : ""}
+        ${s.charging ? "<span>⚡ charging</span>" : (s.battery_low ? "<span>· recharge</span>" : "")}
         <span style="margin-left:auto">${s.rssi ?? "–"} dBm</span>
       </div>
     </div>

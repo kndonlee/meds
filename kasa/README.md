@@ -216,7 +216,26 @@ nothing reloads the page.
 - Shades get a slider plus an exact percent box, a quick-set button, Open and
   Stop. Battery shows as volts, percent, and a bar that turns rust when low.
 - Polling is 4s, dropping to 1.5s while a motor is travelling.
+- `/list` refreshes anything past its staleness window before answering, so a
+  change made from a physical button or the vendor app shows up too.
 - A slider being dragged is never overwritten by a poll.
+
+### Why state used to lag
+
+`turn_on()` / `turn_off()` send the command but leave the device's cached
+sysinfo untouched. `/list` read that cache, so it reported the **pre-command**
+state until the 30s poller happened to run — measured at 16+ seconds. The UI's
+optimistic flip would visibly revert a moment after a click that had actually
+succeeded.
+
+Two changes fix it without slowing the command down:
+
+- An outlet records what it was last told to do, and `is_on` trusts that until
+  a real read supersedes it.
+- The confirming read runs *after* the response, not before it, so the caller
+  is not billed for it.
+
+Commands are 34–116ms and `/list` agrees immediately.
 
 ### Shade limits
 
