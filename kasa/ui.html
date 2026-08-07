@@ -151,6 +151,8 @@ button { font: inherit; cursor: pointer; }
 .ep-hint code { font: 11.5px/1 var(--mono); background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: .15rem .3rem; }
 .ep-filter { width: 100%; max-width: 20rem; margin: .5rem 0 .9rem; padding: .4rem .6rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--ink); font: 13px/1.3 var(--sans); }
 .ep-filter:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(47,122,120,.18); }
+.ep-opt { display: block; margin: -.4rem 0 .9rem; font-size: 12.5px; color: var(--muted); }
+.ep-opt input { margin-right: .4rem; vertical-align: middle; }
 .ep-row { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--rule); }
 .ep-lab { font: 11px/1 var(--mono); color: var(--muted); min-width: 12rem; flex: none; }
 .ep-url { font: 11.5px/1.4 var(--mono); overflow-x: auto; white-space: nowrap; flex: 1; }
@@ -192,6 +194,7 @@ button { font: inherit; cursor: pointer; }
       <code id="ep-base"></code>, matching however you reached this page.
       <a href="/urls" target="_blank">All of them as plain text</a>.</p>
     <input class="ep-filter" id="ep-filter" type="search" placeholder="Filter by name, e.g. freezer or shade-2" aria-label="Filter endpoints">
+    <label class="ep-opt"><input type="checkbox" id="ep-onoff"> also show separate on / off keys</label>
     <div id="ep-list"></div>
   </details>
 </div>
@@ -373,9 +376,14 @@ async function toggleOutlet(alias) {
     function endpointRows() {
   const base = location.origin;
   const rows = [];
+  const variants = $("#ep-onoff") && $("#ep-onoff").checked;
   for (const o of state.outlets) {
-    rows.push([o.alias, "on", `${base}/on/${encodeURIComponent(o.alias)}`]);
-    rows.push([o.alias, "off", `${base}/off/${encodeURIComponent(o.alias)}`]);
+    const a = encodeURIComponent(o.alias);
+    rows.push([o.alias, "toggle", `${base}/toggle/${a}`]);
+    if (variants) {
+      rows.push([o.alias, "on", `${base}/on/${a}`]);
+      rows.push([o.alias, "off", `${base}/off/${a}`]);
+    }
   }
   for (const s2 of state.shades) {
     const cap = s2.max_position ?? 100;
@@ -417,6 +425,9 @@ async function copyText(text) {
 
 document.addEventListener("input", e => {
   if (e.target.id === "ep-filter") renderEndpoints();
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "ep-onoff") renderEndpoints();
 });
 
 refresh();
@@ -495,9 +506,14 @@ document.addEventListener("keydown", e => {
 function endpointRows() {
   const base = location.origin;
   const rows = [];
+  const variants = $("#ep-onoff") && $("#ep-onoff").checked;
   for (const o of state.outlets) {
-    rows.push([o.alias, "on", `${base}/on/${encodeURIComponent(o.alias)}`]);
-    rows.push([o.alias, "off", `${base}/off/${encodeURIComponent(o.alias)}`]);
+    const a = encodeURIComponent(o.alias);
+    rows.push([o.alias, "toggle", `${base}/toggle/${a}`]);
+    if (variants) {
+      rows.push([o.alias, "on", `${base}/on/${a}`]);
+      rows.push([o.alias, "off", `${base}/off/${a}`]);
+    }
   }
   for (const s2 of state.shades) {
     const cap = s2.max_position ?? 100;
@@ -539,6 +555,9 @@ async function copyText(text) {
 
 document.addEventListener("input", e => {
   if (e.target.id === "ep-filter") renderEndpoints();
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "ep-onoff") renderEndpoints();
 });
 
 refresh();

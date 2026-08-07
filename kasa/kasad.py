@@ -812,19 +812,28 @@ async def handle_urls(request):
         "# Paste into a Stream Deck HTTP-request action (not the Website action,",
         "# which opens a browser tab).",
         "",
-        "# ---- Outlets ----------------------------------------------------",
-        "# Prefer /on and /off over /toggle: a dedicated key can't drift out of",
-        "# sync if someone uses the physical button.",
+        "# ---- Outlets: one key each -------------------------------------",
+        "# /toggle reads the current state on the device and flips it, so it",
+        "# stays right even if someone used the physical button.",
         "",
     ]
+    primary = []
     seen = set()
     for alias, outlet in sorted(daemon.outlets.items()):
         if "/" in alias or id(outlet) in seen:
             continue
         seen.add(id(outlet))
-        out.append("%-28s on   %s/on/%s" % (alias, base, alias))
-        out.append("%-28s off  %s/off/%s" % (alias, base, alias))
-        out.append("")
+        primary.append(alias)
+        out.append("%-28s %s/toggle/%s" % (alias, base, alias))
+    out.append("")
+    out += ["# ---- Outlets: dedicated on / off keys (optional) ----------------",
+            "# Use these instead if you want one key that only ever turns it on",
+            "# and another that only ever turns it off.",
+            ""]
+    for alias in primary:
+        out.append("%-24s on   %s/on/%s" % (alias, base, alias))
+        out.append("%-24s off  %s/off/%s" % (alias, base, alias))
+    out.append("")
 
     if daemon.blinds is not None and daemon.blinds.unique():
         out += ["# ---- Shades (0 = open, 100 = closed) ----------------------------", ""]

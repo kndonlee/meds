@@ -107,11 +107,13 @@ the rest, so Option A is roughly 7× faster.
 
 Do *not* use Stream Deck's "Website" action — it opens a browser tab.
 
-### Prefer `/on` and `/off` over `/toggle`
+### `/toggle` vs `/on` and `/off`
 
-`/toggle` reads state first, so a Stream Deck key can drift out of sync if
-someone hits the physical button or the app. If you have keys to spare, a
-dedicated on key and off key are both faster and unambiguous.
+`/toggle` reads the live state from the device and flips it, so a single key
+stays correct no matter what else touched the outlet. It costs one extra device
+read (~110-170ms vs ~40-100ms). Dedicated `/on` and `/off` keys are slightly
+faster and unambiguous if you have keys to spare. Both are supported; nothing
+here is deprecated.
 
 ## Two upstream workarounds live in kasad.py
 
@@ -232,6 +234,13 @@ Two ways, both generated from the live device list so they can't go stale:
 Both build addresses from the request, so whatever host you browsed with is
 what you copy. Browse from the machine the Stream Deck is on and you get URLs
 that work there.
+
+Outlets are listed as a single `/toggle/<alias>` per key, which is what one
+Stream Deck button wants. `/toggle` reads the current state from the device and
+flips it, so it stays correct even if someone used the physical button. Tick
+*also show separate on / off keys* (or read past the first section of `/urls`)
+if you'd rather have one key that only turns something on and another that only
+turns it off.
 
 Use a **Stream Deck HTTP-request action**, not the Website action — the latter
 opens a browser tab.
