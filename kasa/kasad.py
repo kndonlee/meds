@@ -13,6 +13,7 @@ rediscover-and-handshake every time.
   GET /list              every known alias
   GET /healthz           daemon + device reachability
   GET /rediscover        force a broadcast sweep
+  GET /urls              every endpoint as copy-paste text (Stream Deck)
   GET /                  live control panel (ui.html)
 
 Devices are identified by MAC address, never by IP. IPs live in a throwaway
@@ -798,6 +799,54 @@ async def handle_rediscover(request):
     return await handle_health(request)
 
 
+async def handle_urls(request):
+    """Every endpoint as plain text, ready to paste into a Stream Deck action.
+
+    The base is taken from the request, so whatever address you browsed with is
+    the address you copy -- no guessing about localhost vs LAN IP.
+    """
+    daemon = request.app["daemon"]
+    base = str(request.url.origin())
+    out = [
+        "# kasad endpoints for %s" % base,
+        "# Paste into a Stream Deck HTTP-request action (not the Website action,",
+        "# which opens a browser tab).",
+        "",
+        "# ---- Outlets ----------------------------------------------------",
+        "# Prefer /on and /off over /toggle: a dedicated key can't drift out of",
+        "# sync if someone uses the physical button.",
+        "",
+    ]
+    seen = set()
+    for alias, outlet in sorted(daemon.outlets.items()):
+        if "/" in alias or id(outlet) in seen:
+            continue
+        seen.add(id(outlet))
+        out.append("%-28s on   %s/on/%s" % (alias, base, alias))
+        out.append("%-28s off  %s/off/%s" % (alias, base, alias))
+        out.append("")
+
+    if daemon.blinds is not None and daemon.blinds.unique():
+        out += ["# ---- Shades (0 = open, 100 = closed) ----------------------------", ""]
+        for shade in daemon.blinds.unique():
+            cap = shade.max_position
+            if cap < 100:
+                out.append("# %s stops at %d%% (configured limit); higher values clamp."
+                           % (shade.alias, cap))
+            for pct in sorted({0, 25, 50, 75, cap} | set(daemon.blinds.preset_for(shade))):
+                if pct <= cap:
+                    out.append("%-24s %3d%%  %s/shade/%s/%d"
+                               % (shade.alias, pct, base, shade.alias, pct))
+            out.append("%-24s open  %s/shade/%s/open" % (shade.alias, base, shade.alias))
+            out.append("%-24s stop  %s/shade/%s/stop" % (shade.alias, base, shade.alias))
+            out.append("")
+
+    out += ["# ---- Status ------------------------------------------------------",
+            "%-28s      %s/healthz" % ("health", base),
+            "%-28s      %s/list" % ("everything as JSON", base), ""]
+    return web.Response(text="\n".join(out), content_type="text/plain")
+
+
 async def handle_index(request):
     """Serve the control panel. Read from disk each time so the UI can be
     edited without restarting the daemon; state arrives separately via /list."""
@@ -818,6 +867,7 @@ def build_app(daemon):
     app.router.add_get("/list", handle_list)
     app.router.add_get("/healthz", handle_health)
     app.router.add_get("/rediscover", handle_rediscover)
+    app.router.add_get("/urls", handle_urls)
     # Shades before the generic outlet route, which would otherwise swallow them.
     app.router.add_get("/shade/{alias}/{action}", handle_shade)
     app.router.add_get("/{action:toggle|on|off|state}/{alias:.+}", handle_action)

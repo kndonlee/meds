@@ -144,6 +144,18 @@ button { font: inherit; cursor: pointer; }
 .err { border: 1px solid var(--rust); color: var(--rust); border-radius: 8px; padding: .7rem .9rem; margin: 1rem 0; font-size: 13px; }
 .empty { color: var(--muted); font-size: 13px; }
 
+.endpoints { margin-top: 2.4rem; border-top: 1px solid var(--rule); padding-top: 1rem; }
+.endpoints summary { cursor: pointer; font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.endpoints summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.ep-hint { color: var(--muted); font-size: 12.5px; margin: .8rem 0; }
+.ep-hint code { font: 11.5px/1 var(--mono); background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: .15rem .3rem; }
+.ep-filter { width: 100%; max-width: 20rem; margin: .5rem 0 .9rem; padding: .4rem .6rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--ink); font: 13px/1.3 var(--sans); }
+.ep-filter:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(47,122,120,.18); }
+.ep-row { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--rule); }
+.ep-lab { font: 11px/1 var(--mono); color: var(--muted); min-width: 12rem; flex: none; }
+.ep-url { font: 11.5px/1.4 var(--mono); overflow-x: auto; white-space: nowrap; flex: 1; }
+.ep-row .btn { flex: none; padding: .2rem .5rem; font-size: 11px; }
+
 /* toast */
 #toast { position: fixed; left: 50%; bottom: 1.4rem; transform: translate(-50%, 1.6rem); opacity: 0;
   background: var(--ink); color: var(--paper); padding: .55rem .9rem; border-radius: 7px;
@@ -172,6 +184,16 @@ button { font: inherit; cursor: pointer; }
     <h2 class="eyebrow">Outlets</h2>
     <div id="outlets"></div>
   </section>
+
+  <details class="endpoints">
+    <summary>Stream Deck endpoints</summary>
+    <p class="ep-hint">Paste into a Stream Deck <b>HTTP request</b> action — not the
+      Website action, which opens a browser tab. Addresses use
+      <code id="ep-base"></code>, matching however you reached this page.
+      <a href="/urls" target="_blank">All of them as plain text</a>.</p>
+    <input class="ep-filter" id="ep-filter" type="search" placeholder="Filter by name, e.g. freezer or shade-2" aria-label="Filter endpoints">
+    <div id="ep-list"></div>
+  </details>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -317,6 +339,7 @@ async function refresh() {
     renderSummary(true);
     renderShades();
     renderOutlets();
+    renderEndpoints();
   } catch (e) {
     renderSummary(false);
     $("#banner").innerHTML = `<div class="err">Can't reach the daemon — ${esc(e.message)}. Retrying.</div>`;
@@ -347,7 +370,56 @@ async function toggleOutlet(alias) {
     toast(`${alias}: ${e.message}`, true);
   } finally {
     pending.delete(alias);
-    refresh();
+    function endpointRows() {
+  const base = location.origin;
+  const rows = [];
+  for (const o of state.outlets) {
+    rows.push([o.alias, "on", `${base}/on/${encodeURIComponent(o.alias)}`]);
+    rows.push([o.alias, "off", `${base}/off/${encodeURIComponent(o.alias)}`]);
+  }
+  for (const s2 of state.shades) {
+    const cap = s2.max_position ?? 100;
+    const pcts = [...new Set([0, 25, 50, 75, cap, ...(s2.presets || [])])]
+      .filter(p => p <= cap).sort((a, b) => a - b);
+    for (const p of pcts) rows.push([s2.alias, p + "%", `${base}/shade/${encodeURIComponent(s2.alias)}/${p}`]);
+    rows.push([s2.alias, "open", `${base}/shade/${encodeURIComponent(s2.alias)}/open`]);
+    rows.push([s2.alias, "stop", `${base}/shade/${encodeURIComponent(s2.alias)}/stop`]);
+  }
+  return rows;
+}
+
+function renderEndpoints() {
+  const box = $("#ep-list");
+  if (!box) return;
+  $("#ep-base").textContent = location.origin;
+  const q = ($("#ep-filter").value || "").toLowerCase();
+  const rows = endpointRows().filter(r => !q || (r[0] + " " + r[1]).toLowerCase().includes(q));
+  box.innerHTML = rows.map(([name, verb, url]) => `
+    <div class="ep-row">
+      <span class="ep-lab">${esc(name)} · ${esc(verb)}</span>
+      <span class="ep-url">${esc(url)}</span>
+      <button class="btn" data-act="copy" data-url="${esc(url)}">Copy</button>
+    </div>`).join("") || '<p class="empty">Nothing matches.</p>';
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);        // needs a secure context
+  } catch (_) {
+    // http:// on a LAN IP is not a secure context, so fall back
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } finally { ta.remove(); }
+  }
+  toast("Copied " + text);
+}
+
+document.addEventListener("input", e => {
+  if (e.target.id === "ep-filter") renderEndpoints();
+});
+
+refresh();
   }
 }
 
@@ -376,6 +448,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
   if (!b || b.disabled) return;
   const act = b.dataset.act;
+  if (act === "copy")   return copyText(b.dataset.url);
   if (act === "outlet") return toggleOutlet(b.dataset.alias);
 
   const alias = b.dataset.shade;
@@ -417,6 +490,55 @@ document.addEventListener("keydown", e => {
   if (!card || e.target.type !== "number") return;
   e.preventDefault();
   moveShade(card.dataset.shade, clampFor(card.dataset.shade, e.target.value));
+});
+
+function endpointRows() {
+  const base = location.origin;
+  const rows = [];
+  for (const o of state.outlets) {
+    rows.push([o.alias, "on", `${base}/on/${encodeURIComponent(o.alias)}`]);
+    rows.push([o.alias, "off", `${base}/off/${encodeURIComponent(o.alias)}`]);
+  }
+  for (const s2 of state.shades) {
+    const cap = s2.max_position ?? 100;
+    const pcts = [...new Set([0, 25, 50, 75, cap, ...(s2.presets || [])])]
+      .filter(p => p <= cap).sort((a, b) => a - b);
+    for (const p of pcts) rows.push([s2.alias, p + "%", `${base}/shade/${encodeURIComponent(s2.alias)}/${p}`]);
+    rows.push([s2.alias, "open", `${base}/shade/${encodeURIComponent(s2.alias)}/open`]);
+    rows.push([s2.alias, "stop", `${base}/shade/${encodeURIComponent(s2.alias)}/stop`]);
+  }
+  return rows;
+}
+
+function renderEndpoints() {
+  const box = $("#ep-list");
+  if (!box) return;
+  $("#ep-base").textContent = location.origin;
+  const q = ($("#ep-filter").value || "").toLowerCase();
+  const rows = endpointRows().filter(r => !q || (r[0] + " " + r[1]).toLowerCase().includes(q));
+  box.innerHTML = rows.map(([name, verb, url]) => `
+    <div class="ep-row">
+      <span class="ep-lab">${esc(name)} · ${esc(verb)}</span>
+      <span class="ep-url">${esc(url)}</span>
+      <button class="btn" data-act="copy" data-url="${esc(url)}">Copy</button>
+    </div>`).join("") || '<p class="empty">Nothing matches.</p>';
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);        // needs a secure context
+  } catch (_) {
+    // http:// on a LAN IP is not a secure context, so fall back
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } finally { ta.remove(); }
+  }
+  toast("Copied " + text);
+}
+
+document.addEventListener("input", e => {
+  if (e.target.id === "ep-filter") renderEndpoints();
 });
 
 refresh();

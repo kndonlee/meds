@@ -81,6 +81,7 @@ by MAC only if you want to ignore some devices or force stable internal names.
 | `GET /healthz` | device reachability |
 | `GET /rediscover` | force a broadcast sweep |
 | `GET /` | live control panel (`ui.html`) |
+| `GET /urls` | every endpoint as copy-paste text |
 
 Aliases are auto-derived from the names you set in the Kasa app — "Desk Lamp"
 becomes `desk-lamp`. Positional names (`strip1/0` … `strip1/5`) always work too.
@@ -219,6 +220,26 @@ nothing reloads the page.
 - `/list` refreshes anything past its staleness window before answering, so a
   change made from a physical button or the vendor app shows up too.
 - A slider being dragged is never overwritten by a poll.
+
+### Getting URLs for Stream Deck keys
+
+Two ways, both generated from the live device list so they can't go stale:
+
+- **`GET /urls`** — every endpoint as plain text, grouped and commented.
+- **The web panel** — expand *Stream Deck endpoints* at the bottom for a
+  filterable list with a Copy button per row.
+
+Both build addresses from the request, so whatever host you browsed with is
+what you copy. Browse from the machine the Stream Deck is on and you get URLs
+that work there.
+
+Use a **Stream Deck HTTP-request action**, not the Website action — the latter
+opens a browser tab.
+
+**The daemon must be reachable from the Stream Deck machine.** Either run kasad
+on that machine (`host = 127.0.0.1`, the default and the most reliable — no
+dependency on another computer being awake), or set `host = 0.0.0.0` here and
+point the keys at this machine's LAN address.
 
 ### Why state used to lag
 
