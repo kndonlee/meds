@@ -80,7 +80,7 @@ by MAC only if you want to ignore some devices or force stable internal names.
 | `GET /list` | every alias, with MAC and current IP |
 | `GET /healthz` | device reachability |
 | `GET /rediscover` | force a broadcast sweep |
-| `GET /` | clickable page, handy as a phone bookmark |
+| `GET /` | live control panel (`ui.html`) |
 
 Aliases are auto-derived from the names you set in the Kasa app — "Desk Lamp"
 becomes `desk-lamp`. Positional names (`strip1/0` … `strip1/5`) always work too.
@@ -204,6 +204,40 @@ exposed. Shades get ordinal names (`shade-1`…) until you map them in
 - **Shades move slowly** (10–20s). `/shade/<a>/<pct>` returns as soon as the
   bridge accepts the command and reports the *target*; the poller corrects the
   cached position once the motor arrives. `stop` is there for mid-travel.
+
+### Web control panel
+
+`GET /` serves `ui.html` — read from disk per request, so you can edit the page
+and reload without restarting the daemon. State arrives via `fetch("/list")`;
+nothing reloads the page.
+
+- Outlets are one tap. The click sends an absolute `/on` or `/off` rather than
+  `/toggle`, so it cannot invert if someone used the physical button meanwhile.
+- Shades get a slider plus an exact percent box, a quick-set button, Open and
+  Stop. Battery shows as volts, percent, and a bar that turns rust when low.
+- Polling is 4s, dropping to 1.5s while a motor is travelling.
+- A slider being dragged is never overwritten by a poll.
+
+### Shade limits
+
+`[shade_limits]` caps how far the daemon will ever close a shade:
+
+```ini
+[shade_limits]
+shade-1 = 87      # window AC exhaust hose runs through this window
+```
+
+This is enforced **server-side**, not just in the UI, so no client — browser,
+Stream Deck key, stray curl — can drive the motor past it. `close` honours it
+too, using a position command instead of the bridge's close verb, which would
+otherwise travel to 100. A clamped request returns `clamped`, `requested` and
+`limit` so the caller can say what happened.
+
+The UI draws the limit as a hatched no-go zone on both the window glyph and the
+slider track, since the constraint is physical.
+
+`[shade_presets]` sets the quick-set buttons per shade; a limited shade defaults
+to offering its own limit, everything else offers 95%.
 
 ### Battery
 

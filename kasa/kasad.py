@@ -13,7 +13,7 @@ rediscover-and-handshake every time.
   GET /list              every known alias
   GET /healthz           daemon + device reachability
   GET /rediscover        force a broadcast sweep
-  GET /                  clickable HTML page (handy from a phone)
+  GET /                  live control panel (ui.html)
 
 Devices are identified by MAC address, never by IP. IPs live in a throwaway
 cache; when one stops answering -- power outage, DHCP reshuffle, router reboot
@@ -51,6 +51,7 @@ log = logging.getLogger("kasad")
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONF = os.path.join(HERE, "kasa.conf")
 CACHE_PATH = os.path.join(HERE, ".kasa-cache.json")
+UI_PATH = os.path.join(HERE, "ui.html")
 
 # Don't let a burst of failures trigger a broadcast storm.
 REDISCOVER_COOLDOWN = 10.0
@@ -488,7 +489,9 @@ class Daemon:
             # are still discoverable and reportable, just not movable.
             self.blinds = blinds_mod.BlindFleet(
                 key, bridge_mac, shade_aliases,
-                stale_after=conf.getfloat("blinds", "stale_after", fallback=10.0))
+                stale_after=conf.getfloat("blinds", "stale_after", fallback=10.0),
+                limits=dict(conf["shade_limits"]) if conf.has_section("shade_limits") else {},
+                presets=dict(conf["shade_presets"]) if conf.has_section("shade_presets") else {})
 
     async def start(self):
         if self.pins:
@@ -657,12 +660,13 @@ async def handle_shade(request):
 
     started = time.monotonic()
     try:
+        requested = None
         if action.isdigit():
-            target = await shade.set_position(int(action))
+            target, requested = await shade.set_position(int(action))
         elif action == "open":
-            target = await shade.open()
+            target, requested = await shade.open()
         elif action == "close":
-            target = await shade.close()
+            target, requested = await shade.close()
         elif action == "stop":
             target = await shade.stop()
         else:
@@ -674,13 +678,21 @@ async def handle_shade(request):
 
     ms = round((time.monotonic() - started) * 1000, 1)
     log.info("shade %s %s -> %s%% (%sms)", shade.alias, action, target, ms)
-    return web.json_response({
+    body = {
         "ok": True, "shade": shade.alias, "action": action,
         "target": target, "position": shade.position,
         "battery": shade.battery, "battery_percent": shade.battery_percent,
         "battery_low": shade.battery_low, "ms": ms,
+        "max_position": shade.max_position,
         "note": "0 = open, 100 = closed",
-    })
+    }
+    if requested is not None and requested != target:
+        body["clamped"] = True
+        body["requested"] = requested
+        body["limit"] = shade.max_position
+        log.info("shade %s clamped %d%% -> %d%% (configured limit)",
+                 shade.alias, requested, target)
+    return web.json_response(body)
 
 
 async def handle_list(request):
@@ -711,6 +723,8 @@ async def handle_list(request):
                 "battery_low": shade.battery_low,
                 "rssi": shade.rssi, "moving": shade.moving,
                 "writable": daemon.blinds.has_key,
+                "max_position": shade.max_position,
+                "presets": daemon.blinds.preset_for(shade),
             })
     return web.json_response({"ok": True, "outlets": items, "shades": shades,
                               "shade_scale": "0 = open, 100 = closed"})
@@ -748,48 +762,16 @@ async def handle_rediscover(request):
 
 
 async def handle_index(request):
-    daemon = request.app["daemon"]
-    rows, seen = [], set()
-    for alias, outlet in sorted(daemon.outlets.items()):
-        key = (outlet.strip.mac, outlet.child_id, outlet.child_index)
-        if key in seen or "/" in alias:
-            continue
-        seen.add(key)
-        on = outlet.is_on
-        rows.append(
-            '<li><a href="/toggle/{a}">{a}</a> '
-            '<span class="{cls}">{s}</span></li>'.format(
-                a=alias, cls="on" if on else "off", s="ON" if on else "OFF"))
-    shade_rows = []
-    if daemon.blinds is not None:
-        for shade in daemon.blinds.unique():
-            pos = shade.position
-            presets = " ".join(
-                '<a class="p" href="/shade/%s/%d">%d</a>' % (shade.alias, p, p)
-                for p in (0, 25, 50, 75, 100))
-            shade_rows.append(
-                '<li><b>{a}</b> <span class="pct">{p}% closed</span><br>'
-                '<span class="ctl">{presets} '
-                '<a class="p" href="/shade/{a}/stop">stop</a></span></li>'.format(
-                    a=shade.alias, p="?" if pos is None else pos, presets=presets))
-
-    html = """<!doctype html><meta name=viewport content="width=device-width">
-<title>kasad</title><style>
-body{font:16px/1.6 -apple-system,sans-serif;max-width:32rem;margin:2rem auto;padding:0 1rem}
-li{list-style:none;padding:.4rem 0;border-bottom:1px solid #8883}
-a{text-decoration:none;font-weight:600}
-.on{color:#0a0;float:right}.off{color:#999;float:right}
-.pct{color:#888;float:right}
-.ctl{display:inline-block;margin-top:.3rem}
-.p{display:inline-block;min-width:2.2rem;text-align:center;padding:.15rem .4rem;
-   margin-right:.25rem;border:1px solid #8886;border-radius:.3rem;font-size:.85rem}
-h2{font-size:1rem;margin:1.5rem 0 .3rem;color:#888}
-</style><h1>kasad</h1><ul>%s</ul>%s
-<p><a href="/rediscover">rescan network</a></p>""" % (
-        "".join(rows),
-        ("<h2>shades (0 = open, 100 = closed)</h2><ul>%s</ul>"
-         % "".join(shade_rows)) if shade_rows else "")
-    return web.Response(text=html, content_type="text/html")
+    """Serve the control panel. Read from disk each time so the UI can be
+    edited without restarting the daemon; state arrives separately via /list."""
+    try:
+        with open(UI_PATH) as fh:
+            return web.Response(text=fh.read(), content_type="text/html")
+    except FileNotFoundError:
+        return web.Response(
+            text="ui.html is missing next to kasad.py; the JSON API still works "
+                 "at /list, /healthz and /shade/<alias>/<action>.",
+            content_type="text/plain", status=500)
 
 
 def build_app(daemon):

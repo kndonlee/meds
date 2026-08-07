@@ -72,6 +72,20 @@ stale_after = 10
 # bedroom  = 2
 # living   = 3
 
+[shade_limits]
+# Maximum "percent closed" the daemon will ever command, per shade. A physical
+# constraint, not a preference -- enforced server-side so no client can drive
+# a motor past it, and `close` honours it too.
+#
+# shade-1 = 87      # e.g. a window AC exhaust hose runs through this window
+
+[shade_presets]
+# Quick-set buttons shown in the web UI, per shade. Defaults: a limited shade
+# offers its own limit, everything else offers 95.
+#
+# shade-2 = 95
+# shade-3 = 95
+
 [aliases]
 # Optional friendly names. Left side is what you call it, right side is an
 # auto-derived alias or a positional strip1/0 .. strip1/5 reference.

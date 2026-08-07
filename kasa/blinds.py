@@ -148,11 +148,16 @@ def _sweep_sync(timeout=TIMEOUT):
 class Shade:
     """One motor. Identified by MAC, which never changes."""
 
-    def __init__(self, alias, mac, device_type, bridge):
+    def __init__(self, alias, mac, device_type, bridge, max_position=100):
         self.alias = alias
         self.mac = mac
         self.device_type = device_type
         self.bridge = bridge
+        # Physical constraint, not a preference: e.g. an AC exhaust hose runs
+        # through the window, so the shade must never travel past this point.
+        # Enforced here rather than only in the UI, so no client -- browser,
+        # Stream Deck key, stray curl -- can drive the motor into the hose.
+        self.max_position = max_position
         self.state = {}
         self.updated_at = 0.0
         self.error = None
@@ -196,14 +201,17 @@ class Shade:
             await self.refresh()
 
     async def set_position(self, percent):
-        percent = max(0, min(100, int(percent)))
+        """Move to a percentage. Returns (applied, requested) so callers can
+        tell the user when a physical limit changed what they asked for."""
+        requested = max(0, min(100, int(percent)))
+        percent = min(requested, self.max_position)
         await self.bridge.write(self.mac, self.device_type,
                                 {"targetPosition": percent})
         # The motor takes 10-20s to travel; report the target, and let the
         # poller correct the cached value once it arrives.
         self.state = dict(self.state, currentPosition=percent)
         self.updated_at = 0.0
-        return percent
+        return percent, requested
 
     async def operate(self, op):
         await self.bridge.write(self.mac, self.device_type, {"operation": op})
@@ -211,11 +219,15 @@ class Shade:
 
     async def open(self):
         await self.operate(OP_OPEN)
-        return 0
+        return 0, 0
 
     async def close(self):
+        """A limited shade must not use the bridge's close verb, which drives
+        the motor to 100 and straight past the limit."""
+        if self.max_position < 100:
+            return await self.set_position(self.max_position)
         await self.operate(OP_CLOSE)
-        return 100
+        return 100, 100
 
     async def stop(self):
         await self.operate(OP_STOP)
@@ -340,13 +352,27 @@ class Bridge:
 class BlindFleet:
     """All shades behind one bridge, with config-driven aliases."""
 
-    def __init__(self, key, bridge_mac=None, aliases=None, stale_after=10.0):
+    def __init__(self, key, bridge_mac=None, aliases=None, stale_after=10.0,
+                 limits=None, presets=None):
         self.bridge = Bridge(key, bridge_mac)
         self.overrides = {k.lower(): norm_mac(v) if len(norm_mac(v)) >= 12
                           else v.strip()
                           for k, v in (aliases or {}).items()}
         self.stale_after = stale_after
+        self.limits = {k.lower(): int(v) for k, v in (limits or {}).items()}
+        self.presets = {k.lower(): [int(p) for p in str(v).replace(",", " ").split()]
+                        for k, v in (presets or {}).items()}
         self.shades = {}
+
+    def preset_for(self, shade):
+        """Quick-set buttons. Config wins; otherwise offer the shade's own
+        limit if it has one, or 95% as the common near-closed position."""
+        explicit = self.presets.get(shade.alias.lower()) or self.presets.get(shade.mac)
+        if explicit:
+            return [min(p, shade.max_position) for p in explicit]
+        if shade.max_position < 100:
+            return [shade.max_position]
+        return [95]
 
     @property
     def has_key(self):
@@ -379,6 +405,17 @@ class BlindFleet:
                 continue
             match.alias = alias
             shades[alias] = match
+
+        # Limits are applied after renaming so they can be keyed by either the
+        # friendly alias or the MAC.
+        for key, cap in self.limits.items():
+            shade = shades.get(key) or shades.get(norm_mac(key))
+            if shade is None:
+                log.warning("shade limit %r points at unknown shade", key)
+                continue
+            shade.max_position = max(0, min(100, cap))
+            log.info("shade %s limited to %d%% closed", shade.alias,
+                     shade.max_position)
         self.shades = shades
         log.info("%d shade(s) available", len(ordered))
         return ordered

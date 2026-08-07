@@ -1,0 +1,420 @@
+<!-- kasad control panel. Served by kasad.py at /. Read from disk per request,
+     so edits show up on reload without restarting the daemon.
+
+     Design notes:
+       * Amber means energized. It is the incandescent colour, so "on" reads as
+         on without a legend. Teal is reserved for things you can operate, so
+         "interactive" never gets confused with "powered".
+       * Each shade is drawn as the window it actually is, with the blind
+         descending from the top. A shade with a configured limit gets that
+         limit drawn into the glyph and the slider track as a hatched no-go
+         zone -- the constraint is physical, so it is shown as physical.
+       * Numbers are monospaced and tabular so a value never jitters as it
+         updates underneath you. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kasad</title>
+
+<style>
+:root {
+  --paper:   #F6F4F0;
+  --card:    #FFFFFF;
+  --ink:     #1A1917;
+  --muted:   #7C7873;
+  --rule:    #E2DDD5;
+  --amber:   #D98A21;   /* energized */
+  --linen:   #C9BAA6;   /* shade fabric */
+  --rust:    #B8503A;   /* low battery, hard limit */
+  --teal:    #2F7A78;   /* operable */
+  --shadow:  0 1px 2px rgba(26,25,23,.06), 0 4px 14px rgba(26,25,23,.05);
+  --sans: "Avenir Next", -apple-system, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171614; --card: #201E1B; --ink: #ECE8E1; --muted: #918B82;
+    --rule: #322E29; --amber: #E8A33D; --linen: #A2937F; --rust: #D2664C;
+    --teal: #4FA3A0;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 0 1.1rem 4rem;
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 54rem; margin: 0 auto; }
+
+/* ---------------------------------------------------------- masthead */
+.masthead {
+  display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;
+  padding: 1.6rem 0 1rem; border-bottom: 1px solid var(--rule); margin-bottom: 1.6rem;
+}
+.wordmark { font-size: 1.05rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; margin: 0; }
+.summary { margin-left: auto; display: flex; gap: 1.1rem; font: 12px/1 var(--mono); color: var(--muted); }
+.summary b { color: var(--ink); font-weight: 600; }
+.summary .warn { color: var(--rust); }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: var(--muted); vertical-align: middle; margin-right: .35rem; }
+.dot.live { background: var(--teal); }
+.dot.down { background: var(--rust); }
+
+.eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); margin: 2rem 0 .7rem;
+}
+.eyebrow .sub { margin-left: .6rem; text-transform: none; letter-spacing: .02em; font-family: var(--mono); font-weight: 400; }
+
+/* ------------------------------------------------------------ shades */
+.shades { display: grid; gap: .9rem; }
+.shade {
+  display: grid; grid-template-columns: 76px 1fr; gap: 1.1rem;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 1rem 1.1rem; box-shadow: var(--shadow);
+}
+/* the window glyph -- the blind really does hang from the top */
+.win { position: relative; border: 1px solid var(--rule); border-radius: 3px; height: 104px; overflow: hidden; background: linear-gradient(#BBD3E0, #E6EDF0); }
+@media (prefers-color-scheme: dark) { .win { background: linear-gradient(#2B3E49, #1E2A31); } }
+.blind { position: absolute; inset: 0 0 auto 0; background: repeating-linear-gradient(180deg, var(--linen) 0 3px, rgba(0,0,0,.05) 3px 4px); transition: height .5s cubic-bezier(.3,.7,.2,1); }
+.blind::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(0,0,0,.28); }
+.nogo { position: absolute; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(184,80,58,.32) 4px 6px); border-top: 1.5px solid var(--rust); }
+.moving-tag { position: absolute; inset: auto 0 0 0; text-align: center; font: 9px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; background: var(--teal); color: #fff; }
+
+.shade-head { display: flex; align-items: baseline; gap: .6rem; }
+.shade-name { font-weight: 600; }
+.readout { margin-left: auto; font: 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.readout .unit { color: var(--muted); font-size: 11px; }
+
+/* slider with its blocked zone drawn onto the track */
+.track-wrap { position: relative; margin: .9rem 0 .5rem; }
+.track-block { position: absolute; top: 50%; transform: translateY(-50%); right: 0; height: 6px; border-radius: 0 3px 3px 0;
+  background: repeating-linear-gradient(45deg, transparent 0 3px, rgba(184,80,58,.4) 3px 5px); border-left: 1.5px solid var(--rust); pointer-events: none; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; margin: 0; display: block; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--rule); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--card); border: 2px solid var(--teal); box-shadow: var(--shadow); cursor: grab; }
+input[type=range]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.08); }
+input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+.controls { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+.pctbox { display: inline-flex; align-items: center; gap: .25rem; border: 1px solid var(--rule); border-radius: 6px; padding: .2rem .45rem; background: var(--paper); }
+.pctbox input { width: 3.2ch; border: 0; background: transparent; color: var(--ink); font: 13px/1 var(--mono); font-variant-numeric: tabular-nums; text-align: right; padding: .15rem 0; -moz-appearance: textfield; appearance: textfield; }
+.pctbox input::-webkit-outer-spin-button, .pctbox input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pctbox input:focus { outline: none; }
+.pctbox:focus-within { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(47,122,120,.18); }
+.pctbox span { font: 11px/1 var(--mono); color: var(--muted); }
+
+button { font: inherit; cursor: pointer; }
+.btn {
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  border-radius: 6px; padding: .32rem .6rem; font: 12px/1.2 var(--mono);
+  transition: border-color .15s, color .15s;
+}
+.btn:hover { border-color: var(--teal); color: var(--teal); }
+.btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.btn.go { border-color: var(--teal); color: var(--teal); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+.batt { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; font: 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.batt-bar { display: block; flex: none; width: 62px; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.batt-fill { display: block; height: 100%; background: var(--amber); transition: width .4s ease; }
+.batt.low { color: var(--rust); }
+.batt.low .batt-fill { background: var(--rust); }
+.limit-note { color: var(--rust); }
+
+/* ----------------------------------------------------------- outlets */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: .5rem; }
+.outlet {
+  display: flex; align-items: center; gap: .55rem; text-align: left; width: 100%;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+  padding: .6rem .7rem; color: var(--ink); box-shadow: var(--shadow);
+  transition: border-color .15s, background .15s;
+}
+.outlet:hover { border-color: var(--teal); }
+.outlet:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.outlet .lamp { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); flex: none; transition: background .2s, box-shadow .2s; }
+.outlet.on { background: color-mix(in srgb, var(--amber) 9%, var(--card)); border-color: color-mix(in srgb, var(--amber) 38%, var(--rule)); }
+.outlet.on .lamp { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
+.outlet .nm { font-size: 12.5px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; }
+.outlet.pending { opacity: .55; }
+
+.err { border: 1px solid var(--rust); color: var(--rust); border-radius: 8px; padding: .7rem .9rem; margin: 1rem 0; font-size: 13px; }
+.empty { color: var(--muted); font-size: 13px; }
+
+/* toast */
+#toast { position: fixed; left: 50%; bottom: 1.4rem; transform: translate(-50%, 1.6rem); opacity: 0;
+  background: var(--ink); color: var(--paper); padding: .55rem .9rem; border-radius: 7px;
+  font: 12.5px/1.4 var(--sans); max-width: min(30rem, 90vw); box-shadow: var(--shadow);
+  transition: opacity .2s, transform .2s; pointer-events: none; z-index: 9; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+#toast.bad { background: var(--rust); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 30rem) { .shade { grid-template-columns: 56px 1fr; gap: .8rem; } .win { height: 84px; } }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <h1 class="wordmark">kasad</h1>
+    <div class="summary" id="summary"><span class="dot"></span>connecting</div>
+  </header>
+  <div id="banner"></div>
+
+  <section id="shade-section" hidden>
+    <h2 class="eyebrow">Shades <span class="sub">0 = open · 100 = closed</span></h2>
+    <div class="shades" id="shades"></div>
+  </section>
+
+  <section>
+    <h2 class="eyebrow">Outlets</h2>
+    <div id="outlets"></div>
+  </section>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+let state = { outlets: [], shades: [] };
+let pending = new Set();      // outlets mid-flight; don't let polling overwrite them
+let dragging = null;          // shade alias being dragged; don't fight the user's hand
+let timer = null;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function toast(msg, bad) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "show" + (bad ? " bad" : "");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => (t.className = ""), 3800);
+}
+
+async function api(path) {
+  const r = await fetch(path, { cache: "no-store" });
+  let body = {};
+  try { body = await r.json(); } catch (_) {}
+  if (!r.ok || body.ok === false) throw new Error(body.error || ("HTTP " + r.status));
+  return body;
+}
+
+/* ------------------------------------------------------------- render */
+
+function renderSummary(ok) {
+  const on = state.outlets.filter(o => o.state === "on").length;
+  const low = state.shades.filter(s => s.battery_low).length;
+  const bits = [
+    `<span><span class="dot ${ok ? "live" : "down"}"></span>${ok ? "live" : "offline"}</span>`,
+    `<span><b>${on}</b>/${state.outlets.length} on</span>`,
+  ];
+  if (state.shades.length) bits.push(`<span><b>${state.shades.length}</b> shades</span>`);
+  if (low) bits.push(`<span class="warn"><b>${low}</b> low battery</span>`);
+  $("#summary").innerHTML = bits.join("");
+}
+
+function shadeCard(s) {
+  const max = s.max_position ?? 100;
+  const pos = s.position ?? 0;
+  const limited = max < 100;
+  const pct = s.battery_percent;
+  const presets = (s.presets || []).map(p =>
+    `<button class="btn" data-act="set" data-shade="${esc(s.alias)}" data-val="${p}">${p}%</button>`).join("");
+
+  return `<article class="shade" data-shade="${esc(s.alias)}">
+    <div class="win">
+      <div class="blind" style="height:${pos}%"></div>
+      ${limited ? `<div class="nogo" style="height:${100 - max}%" title="Limit: ${max}% closed"></div>` : ""}
+      ${s.moving ? `<div class="moving-tag">moving</div>` : ""}
+    </div>
+    <div>
+      <div class="shade-head">
+        <span class="shade-name">${esc(s.alias)}</span>
+        ${limited ? `<span class="limit-note" style="font:11px/1 var(--mono)">stops at ${max}%</span>` : ""}
+        <span class="readout"><span class="js-read">${pos}</span><span class="unit">% closed</span></span>
+      </div>
+
+      <div class="track-wrap">
+        <input type="range" min="0" max="100" step="1" value="${pos}"
+               aria-label="${esc(s.alias)} percent closed"
+               ${s.writable ? "" : "disabled"}>
+        ${limited ? `<div class="track-block" style="width:${100 - max}%"></div>` : ""}
+      </div>
+
+      <div class="controls">
+        <label class="pctbox">
+          <input type="number" min="0" max="${max}" step="1" value="${pos}"
+                 aria-label="${esc(s.alias)} exact percent" ${s.writable ? "" : "disabled"}>
+          <span>%</span>
+        </label>
+        <button class="btn go" data-act="apply" data-shade="${esc(s.alias)}" ${s.writable ? "" : "disabled"}>Set</button>
+        ${presets}
+        <button class="btn" data-act="open" data-shade="${esc(s.alias)}" ${s.writable ? "" : "disabled"}>Open</button>
+        <button class="btn" data-act="stop" data-shade="${esc(s.alias)}" ${s.writable ? "" : "disabled"}>Stop</button>
+      </div>
+
+      <div class="batt ${s.battery_low ? "low" : ""}">
+        <span class="batt-bar"><span class="batt-fill" style="width:${pct ?? 0}%"></span></span>
+        <span>${pct ?? "–"}%</span>
+        <span>${s.battery ?? "–"} V</span>
+        ${s.battery_low ? "<span>· recharge</span>" : ""}
+        <span style="margin-left:auto">${s.rssi ?? "–"} dBm</span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderShades() {
+  const sec = $("#shade-section");
+  if (!state.shades.length) { sec.hidden = true; return; }
+  sec.hidden = false;
+  for (const s of state.shades) {
+    const card = document.querySelector(`.shade[data-shade="${CSS.escape(s.alias)}"]`);
+    if (card && dragging === s.alias) continue;         // never yank a slider mid-drag
+    if (card) {
+      // in-place update, so focus and caret survive the poll
+      card.querySelector(".blind").style.height = (s.position ?? 0) + "%";
+      card.querySelector(".js-read").textContent = s.position ?? "–";
+      const range = card.querySelector("input[type=range]");
+      if (document.activeElement !== range) range.value = s.position ?? 0;
+      const num = card.querySelector("input[type=number]");
+      if (document.activeElement !== num) num.value = s.position ?? 0;
+      const fill = card.querySelector(".batt-fill");
+      if (fill) fill.style.width = (s.battery_percent ?? 0) + "%";
+      const tag = card.querySelector(".moving-tag");
+      if (s.moving && !tag) card.querySelector(".win").insertAdjacentHTML("beforeend", '<div class="moving-tag">moving</div>');
+      if (!s.moving && tag) tag.remove();
+    } else {
+      $("#shades").innerHTML = state.shades.map(shadeCard).join("");
+      break;
+    }
+  }
+}
+
+function renderOutlets() {
+  const groups = {};
+  for (const o of state.outlets) (groups[o.device] ||= []).push(o);
+  const html = Object.entries(groups).map(([dev, list]) => `
+    <h2 class="eyebrow">${esc(dev)} <span class="sub">${esc(list[0].host || "")}</span></h2>
+    <div class="grid">${list.map(o => `
+      <button class="outlet ${o.state === "on" ? "on" : ""} ${pending.has(o.alias) ? "pending" : ""}"
+              data-act="outlet" data-alias="${esc(o.alias)}"
+              aria-pressed="${o.state === "on"}">
+        <span class="lamp"></span><span class="nm">${esc(o.alias)}</span>
+      </button>`).join("")}</div>`).join("");
+  $("#outlets").innerHTML = html || '<p class="empty">No outlets found.</p>';
+}
+
+/* -------------------------------------------------------------- data */
+
+async function refresh() {
+  try {
+    const d = await api("/list");
+    state.outlets = (d.outlets || []).filter(o => o.primary && !o.alias.includes("/"));
+    state.shades = d.shades || [];
+    $("#banner").innerHTML = "";
+    renderSummary(true);
+    renderShades();
+    renderOutlets();
+  } catch (e) {
+    renderSummary(false);
+    $("#banner").innerHTML = `<div class="err">Can't reach the daemon — ${esc(e.message)}. Retrying.</div>`;
+  }
+  schedule();
+}
+
+function schedule() {
+  clearTimeout(timer);
+  const fast = state.shades.some(s => s.moving);   // motors take 10-20s; watch them closely
+  timer = setTimeout(refresh, fast ? 1500 : 4000);
+}
+
+/* ----------------------------------------------------------- actions */
+
+async function toggleOutlet(alias) {
+  const o = state.outlets.find(x => x.alias === alias);
+  if (!o || pending.has(alias)) return;
+  // Send an absolute command rather than /toggle: we know the state, so this
+  // can't invert on us if someone used the physical button meanwhile.
+  const want = o.state === "on" ? "off" : "on";
+  pending.add(alias);
+  o.state = want;                                  // optimistic
+  renderOutlets();
+  try {
+    await api(`/${want}/${encodeURIComponent(alias)}`);
+  } catch (e) {
+    toast(`${alias}: ${e.message}`, true);
+  } finally {
+    pending.delete(alias);
+    refresh();
+  }
+}
+
+async function moveShade(alias, action) {
+  const s = state.shades.find(x => x.alias === alias);
+  if (!s) return;
+  try {
+    const r = await api(`/shade/${encodeURIComponent(alias)}/${action}`);
+    if (r.clamped) toast(`${alias} stops at ${r.limit}% — asked for ${r.requested}%.`);
+    if (typeof r.target === "number") s.position = r.target;
+    s.moving = true;
+    renderShades();
+  } catch (e) {
+    toast(`${alias}: ${e.message}`, true);
+  }
+  schedule();
+}
+
+function clampFor(alias, v) {
+  const s = state.shades.find(x => x.alias === alias);
+  const max = s?.max_position ?? 100;
+  return Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  const act = b.dataset.act;
+  if (act === "outlet") return toggleOutlet(b.dataset.alias);
+
+  const alias = b.dataset.shade;
+  if (act === "set")   return moveShade(alias, clampFor(alias, b.dataset.val));
+  if (act === "open")  return moveShade(alias, "open");
+  if (act === "stop")  return moveShade(alias, "stop");
+  if (act === "apply") {
+    const card = b.closest(".shade");
+    return moveShade(alias, clampFor(alias, card.querySelector("input[type=number]").value));
+  }
+});
+
+// live glyph feedback while dragging, commit on release
+document.addEventListener("input", e => {
+  const card = e.target.closest(".shade");
+  if (!card) return;
+  const alias = card.dataset.shade;
+  const v = clampFor(alias, e.target.value);
+  if (e.target.type === "range") {
+    dragging = alias;
+    e.target.value = v;                       // pin at the limit rather than sail past
+    card.querySelector(".blind").style.height = v + "%";
+    card.querySelector(".js-read").textContent = v;
+    card.querySelector("input[type=number]").value = v;
+  }
+});
+document.addEventListener("change", e => {
+  const card = e.target.closest(".shade");
+  if (!card) return;
+  const alias = card.dataset.shade;
+  const v = clampFor(alias, e.target.value);
+  e.target.value = v;
+  dragging = null;
+  if (e.target.type === "range") moveShade(alias, v);
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const card = e.target.closest(".shade");
+  if (!card || e.target.type !== "number") return;
+  e.preventDefault();
+  moveShade(card.dataset.shade, clampFor(card.dataset.shade, e.target.value));
+});
+
+refresh();
+</script>
