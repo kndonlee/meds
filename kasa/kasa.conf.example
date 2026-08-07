@@ -47,6 +47,31 @@ broadcast =
 # Seconds to listen for replies during a discovery sweep.
 discovery_timeout = 5
 
+[blinds]
+# Motion Blinds / Connector shades. Delete this section if you have none.
+#
+# The 16-character key from the Connector app:
+#   Settings / About -> tap the version number 5 times
+# Reading shade position needs NO key; only movement does. Leave it blank and
+# the shades show up read-only.
+key =
+
+# Optional: pin the bridge by MAC. Auto-discovered by subnet sweep otherwise,
+# and relocated by MAC if its IP changes.
+# bridge = 9c9e6e1e1098
+
+# Seconds before a cached shade position is re-read.
+stale_after = 10
+
+[shades]
+# alias = MAC, or a 1-based position in the bridge's device list.
+# Run `./kasactl list` to see them; the bridge reports MACs only, since the
+# friendly names live in the Connector app and are not exposed.
+#
+# kitchen  = 9c9e6e1e10980001
+# bedroom  = 2
+# living   = 3
+
 [aliases]
 # Optional friendly names. Left side is what you call it, right side is an
 # auto-derived alias or a positional strip1/0 .. strip1/5 reference.

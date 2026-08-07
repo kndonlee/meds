@@ -6,6 +6,7 @@
 #   ./kasactl run                  run the daemon in the foreground
 #   ./kasactl toggle <alias>       hit a running daemon
 #   ./kasactl on|off|state <alias>
+#   ./kasactl shade <alias> <0-100|open|close|stop|state>
 #   ./kasactl health               which strips are reachable, and where
 #   ./kasactl rediscover           force a broadcast rescan after an outage
 #   ./kasactl install-service      keep it running via launchd
@@ -40,13 +41,18 @@ case "$cmd" in
     ;;
   toggle|on|off|state)
     alias="${1:?usage: kasactl $cmd <alias>}"
-    curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/${cmd}/${alias}" && echo
+    curl --fail-with-body -sS --max-time 5 "http://127.0.0.1:${PORT}/${cmd}/${alias}" && echo
+    ;;
+  shade)
+    alias="${1:?usage: kasactl shade <alias> <0-100|open|close|stop|state>}"
+    action="${2:?usage: kasactl shade <alias> <0-100|open|close|stop|state>}"
+    curl --fail-with-body -sS --max-time 10 "http://127.0.0.1:${PORT}/shade/${alias}/${action}" && echo
     ;;
   health)
-    curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/healthz" && echo
+    curl --fail-with-body -sS --max-time 5 "http://127.0.0.1:${PORT}/healthz" && echo
     ;;
   rediscover)
-    curl -fsS --max-time 30 "http://127.0.0.1:${PORT}/rediscover" && echo
+    curl --fail-with-body -sS --max-time 30 "http://127.0.0.1:${PORT}/rediscover" && echo
     ;;
   install-service)
     mkdir -p "$HOME/Library/LaunchAgents"
@@ -87,7 +93,7 @@ PLIST
     tail -f "${LOG_DIR}/kasad.log"
     ;;
   *)
-    sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
     ;;
 esac

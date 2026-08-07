@@ -165,3 +165,53 @@ state, so refreshes use `update(update_children=False)` — same data, ~40ms.
 Clone the repo, run `./setup.sh`, copy `kasa.conf` over by hand (it is not in
 git, by design), and `./kasactl install-service`. No IP addresses to migrate —
 the daemon discovers the strips wherever they are.
+
+## Shades (Motion Blinds / Connector)
+
+The Connector app is a front end for the Coulisse/Dooya bridge, which exposes a
+JSON-over-UDP API on port 32100. Same approach as the outlets: talk to the
+hardware on the LAN instead of through a vendor cloud.
+
+| Route | Does |
+|---|---|
+| `GET /shade/<alias>/<0-100>` | move to a percentage |
+| `GET /shade/<alias>/open` / `close` / `stop` | full travel, or halt mid-move |
+| `GET /shade/<alias>/state` | position, battery, signal |
+
+**Positions are `0 = fully open`, `100 = fully closed`** — the protocol's own
+convention, kept so it matches anything else you read about these bridges.
+
+### Setup
+
+Put the 16-character key from the Connector app in `[blinds]` of `kasa.conf`:
+
+> Settings / About → tap the **version number** 5 times → **Key**
+
+Reading position needs **no key at all** — `ReadDevice` is unauthenticated on
+this bridge. Without one, shades still appear in `/list` and `/healthz`, just
+marked `writable: false`. Only movement needs the key, which authenticates as
+AES-128-ECB over the bridge's rotating token.
+
+The bridge reports MACs only; the friendly names live in the app and are not
+exposed. Shades get ordinal names (`shade-1`…) until you map them in
+`[shades]`, by MAC or by 1-based position.
+
+### Two quirks, both found by probing the hardware
+
+- **The bridge answers unicast only.** Broadcast and multicast `GetDeviceList`
+  get no reply, so discovery sweeps the /24 — 254 datagrams in ~10ms. That
+  doubles as MAC-based relocation, same as the strips.
+- **Shades move slowly** (10–20s). `/shade/<a>/<pct>` returns as soon as the
+  bridge accepts the command and reports the *target*; the poller corrects the
+  cached position once the motor arrives. `stop` is there for mid-travel.
+
+### Stream Deck
+
+Preset keys are the most predictable mapping, since each is idempotent — the
+same press always lands the shade in the same place:
+
+```
+http://127.0.0.1:8787/shade/kitchen/0      fully open
+http://127.0.0.1:8787/shade/kitchen/50     half
+http://127.0.0.1:8787/shade/kitchen/100    fully closed
+```

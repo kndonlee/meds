@@ -44,6 +44,8 @@ from kasa.iot import IotStrip
 from kasa.protocols import IotProtocol
 from kasa.transports import KlapTransportV2
 
+import blinds as blinds_mod
+
 log = logging.getLogger("kasad")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -475,6 +477,19 @@ class Daemon:
         self.strips = []
         self.outlets = {}
 
+        # Motion Blinds / Connector shades. Optional: absent config just means
+        # no shade routes, and a missing key still allows read-only status.
+        self.blinds = None
+        if conf.has_section("blinds"):
+            key = conf.get("blinds", "key", fallback="").strip()
+            bridge_mac = conf.get("blinds", "bridge", fallback="").strip()
+            shade_aliases = dict(conf["shades"]) if conf.has_section("shades") else {}
+            # Built even with no key: ReadDevice is unauthenticated, so shades
+            # are still discoverable and reportable, just not movable.
+            self.blinds = blinds_mod.BlindFleet(
+                key, bridge_mac, shade_aliases,
+                stale_after=conf.getfloat("blinds", "stale_after", fallback=10.0))
+
     async def start(self):
         if self.pins:
             await self._start_pinned()
@@ -484,6 +499,16 @@ class Daemon:
             strip.on_topology_change = self.rebuild_outlets
         self.rebuild_outlets()
         self._warn_if_all_rejected()
+
+        if self.blinds is not None:
+            try:
+                await self.blinds.start()
+                if not self.blinds.has_key:
+                    log.warning("shades are READ-ONLY: no 16-character key in "
+                                "[blinds]. Connector app -> Settings / About -> "
+                                "tap the version number 5 times.")
+            except Exception as exc:
+                log.error("blinds bridge unavailable: %s", exc)
 
     def _warn_if_all_rejected(self):
         """Bad credentials look like a network problem unless we say otherwise."""
@@ -575,6 +600,11 @@ class Daemon:
                 except Exception as exc:
                     strip.error = str(exc)
                     log.debug("poll of %s failed: %s", strip.name, exc)
+            if self.blinds is not None:
+                try:
+                    await self.blinds.refresh_all()
+                except Exception as exc:
+                    log.debug("poll of shades failed: %s", exc)
 
 
 # ---------------------------------------------------------------- http layer
@@ -613,6 +643,45 @@ async def handle_action(request):
          "ms": ms})
 
 
+async def handle_shade(request):
+    """/shade/<alias>/<0-100 | open | close | stop | state>"""
+    daemon = request.app["daemon"]
+    if daemon.blinds is None:
+        return json_error("no shades configured", status=404)
+
+    alias = request.match_info["alias"]
+    action = request.match_info["action"].lower()
+    shade = daemon.blinds.resolve(alias)
+    if shade is None:
+        return json_error("unknown shade %r" % alias)
+
+    started = time.monotonic()
+    try:
+        if action.isdigit():
+            target = await shade.set_position(int(action))
+        elif action == "open":
+            target = await shade.open()
+        elif action == "close":
+            target = await shade.close()
+        elif action == "stop":
+            target = await shade.stop()
+        else:
+            await shade.refresh_if_stale(daemon.blinds.stale_after)
+            target = shade.position
+    except Exception as exc:
+        log.error("shade %s %s failed: %s", alias, action, exc)
+        return json_error(str(exc), status=502)
+
+    ms = round((time.monotonic() - started) * 1000, 1)
+    log.info("shade %s %s -> %s%% (%sms)", shade.alias, action, target, ms)
+    return web.json_response({
+        "ok": True, "shade": shade.alias, "action": action,
+        "target": target, "position": shade.position,
+        "battery": shade.battery, "ms": ms,
+        "note": "0 = open, 100 = closed",
+    })
+
+
 async def handle_list(request):
     daemon = request.app["daemon"]
     seen, items = set(), []
@@ -630,7 +699,18 @@ async def handle_list(request):
             "primary": key not in seen,
         })
         seen.add(key)
-    return web.json_response({"ok": True, "outlets": items})
+
+    shades = []
+    if daemon.blinds is not None:
+        for shade in daemon.blinds.unique():
+            shades.append({
+                "alias": shade.alias, "mac": shade.mac,
+                "position": shade.position, "battery": shade.battery,
+                "rssi": shade.rssi, "moving": shade.moving,
+                "writable": daemon.blinds.has_key,
+            })
+    return web.json_response({"ok": True, "outlets": items, "shades": shades,
+                              "shade_scale": "0 = open, 100 = closed"})
 
 
 async def handle_health(request):
@@ -639,8 +719,17 @@ async def handle_health(request):
                 "connected": s.device is not None, "error": s.error}
                for s in daemon.strips]
     healthy = bool(devices) and all(d["connected"] for d in devices)
-    return web.json_response({"ok": healthy, "devices": devices},
-                             status=200 if healthy else 503)
+    body = {"ok": healthy, "devices": devices}
+    if daemon.blinds is not None:
+        bridge = daemon.blinds.bridge
+        body["blinds"] = {
+            "bridge_mac": bridge.mac, "host": bridge.host,
+            "firmware": bridge.firmware, "shades": len(bridge.devices),
+            "writable": bridge.has_key, "error": bridge.error,
+        }
+        healthy = healthy and bridge.host is not None
+        body["ok"] = healthy
+    return web.json_response(body, status=200 if healthy else 503)
 
 
 async def handle_rediscover(request):
@@ -668,14 +757,35 @@ async def handle_index(request):
             '<li><a href="/toggle/{a}">{a}</a> '
             '<span class="{cls}">{s}</span></li>'.format(
                 a=alias, cls="on" if on else "off", s="ON" if on else "OFF"))
+    shade_rows = []
+    if daemon.blinds is not None:
+        for shade in daemon.blinds.unique():
+            pos = shade.position
+            presets = " ".join(
+                '<a class="p" href="/shade/%s/%d">%d</a>' % (shade.alias, p, p)
+                for p in (0, 25, 50, 75, 100))
+            shade_rows.append(
+                '<li><b>{a}</b> <span class="pct">{p}% closed</span><br>'
+                '<span class="ctl">{presets} '
+                '<a class="p" href="/shade/{a}/stop">stop</a></span></li>'.format(
+                    a=shade.alias, p="?" if pos is None else pos, presets=presets))
+
     html = """<!doctype html><meta name=viewport content="width=device-width">
 <title>kasad</title><style>
 body{font:16px/1.6 -apple-system,sans-serif;max-width:32rem;margin:2rem auto;padding:0 1rem}
 li{list-style:none;padding:.4rem 0;border-bottom:1px solid #8883}
 a{text-decoration:none;font-weight:600}
 .on{color:#0a0;float:right}.off{color:#999;float:right}
-</style><h1>kasad</h1><ul>%s</ul>
-<p><a href="/rediscover">rescan network</a></p>""" % "".join(rows)
+.pct{color:#888;float:right}
+.ctl{display:inline-block;margin-top:.3rem}
+.p{display:inline-block;min-width:2.2rem;text-align:center;padding:.15rem .4rem;
+   margin-right:.25rem;border:1px solid #8886;border-radius:.3rem;font-size:.85rem}
+h2{font-size:1rem;margin:1.5rem 0 .3rem;color:#888}
+</style><h1>kasad</h1><ul>%s</ul>%s
+<p><a href="/rediscover">rescan network</a></p>""" % (
+        "".join(rows),
+        ("<h2>shades (0 = open, 100 = closed)</h2><ul>%s</ul>"
+         % "".join(shade_rows)) if shade_rows else "")
     return web.Response(text=html, content_type="text/html")
 
 
@@ -686,6 +796,8 @@ def build_app(daemon):
     app.router.add_get("/list", handle_list)
     app.router.add_get("/healthz", handle_health)
     app.router.add_get("/rediscover", handle_rediscover)
+    # Shades before the generic outlet route, which would otherwise swallow them.
+    app.router.add_get("/shade/{alias}/{action}", handle_shade)
     app.router.add_get("/{action:toggle|on|off|state}/{alias:.+}", handle_action)
     return app
 
@@ -725,6 +837,22 @@ async def main_async(args):
                          slugify(child.alias)))
             if not strip.device.children:
                 print("    (single outlet)  alias: %s" % slugify(strip.device.alias))
+
+        if daemon.blinds is not None:
+            b = daemon.blinds.bridge
+            print("\nblinds bridge %s at %s (fw %s)%s"
+                  % (b.mac, b.host, b.firmware,
+                     "" if b.has_key else "   [READ-ONLY: no key configured]"))
+            for shade in daemon.blinds.unique():
+                pos = shade.position
+                print("    %-16s %s%% closed   battery %sV   rssi %s   mac: %s"
+                      % (shade.alias, "?" if pos is None else pos,
+                         shade.battery, shade.rssi, shade.mac))
+            if not b.has_key:
+                print("\n  To enable movement, put the 16-character key in "
+                      "[blinds] of kasa.conf:")
+                print("    Connector app -> Settings / About -> tap the version "
+                      "number 5 times")
         await daemon.shutdown()
         return
 
