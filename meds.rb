@@ -65,8 +65,12 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.8.9"
+    @version = "4.9.0"
     @hostname = `hostname`.strip.delete_suffix(".local")
+    # crack_meds replaces @meds with empty Med objects and then re-logs every dose;
+    # the announce timer thread must never observe that half-built state (every
+    # med looks due with an empty dose log), so both sides take this lock.
+    @meds_lock = Mutex.new
     reset_meds
 
     @logger = MedLogger.instance
@@ -97,7 +101,7 @@ class MedDash
         if med_count == 0
           interval = 5
         else
-          announce_meds_due(false) unless @muted
+          announce_meds_due(false, med_count: med_count) unless @muted
           interval = 1800
         end
 
@@ -106,8 +110,7 @@ class MedDash
     end
   end
 
-  def announce_meds_due(manual=true)
-    med_count = med_count_to_take
+  def announce_meds_due(manual=true, med_count: med_count_to_take)
     med_word = med_count == 1 ? "med" : "meds"
     system("say -v Daniel \"Kimberly, you now have #{med_count} #{med_word} due.\"")
 
@@ -116,12 +119,14 @@ class MedDash
   end
 
   def med_count_to_take
-    count = 0
-    @meds.each do |name, med|
-      @logger.log("count state #{med.name} announce:#{med.announce} due:#{med.due?} done:#{med.done?}") if $DEBUG
-      count += 1 if (med.announce && med.due? && !med.done?)
+    @meds_lock.synchronize do
+      count = 0
+      @meds.each do |name, med|
+        @logger.log("count state #{med.name} announce:#{med.announce} due:#{med.due?} done:#{med.done?}") if $DEBUG
+        count += 1 if (med.announce && med.due? && !med.done?)
+      end
+      count
     end
-    count
   end
 
   def last_update_time
@@ -485,6 +490,10 @@ class MedDash
   end
 
   def crack_meds
+    @meds_lock.synchronize { crack_meds_unlocked }
+  end
+
+  def crack_meds_unlocked
     reset_meds
     @errors = ""
     @notes = ""
