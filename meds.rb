@@ -65,7 +65,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.8.8"
+    @version = "4.8.9"
     @hostname = `hostname`.strip.delete_suffix(".local")
     reset_meds
 
@@ -725,7 +725,7 @@ class MedDash
   def dash_loop
     now = Time.now.to_i
 
-    if (now - @last_dash_update) > dash_update_interval || @display_dash
+    if (now - @last_dash_update) >= dash_update_interval || @display_dash
       @display_dash = false
       #print ANSI.clear
       ANSI.move_cursor(1,1)
@@ -850,33 +850,22 @@ class MedDash
     end
   end
 
+  # STDIN is held in raw/no-echo mode for the whole run loop (see run), so
+  # this is just a non-blocking poll; nothing typed is ever echoed by the terminal.
   def char_if_pressed
-    c = nil
+    return nil unless IO.select([STDIN], nil, nil, 0)
 
-    begin
-      # Set STDIN to raw mode
-      STDIN.raw do |stdin|
-        stdin.echo = false
-
-        # Check if input is available
-        if IO.select([STDIN], nil, nil, 0)
-          # Read a single character from STDIN
-          c = STDIN.getc
-        end
-      end
-
-      # Convert the character code to a string if a character was read
-      c.chr if c
-    ensure
-      # Reset STDIN to normal mode
-      STDIN.echo = true
-      STDIN.cooked!
-    end
+    c = STDIN.getc
+    c.chr if c
   end
 
   def run
     print ANSI.start_alternate_buffer
     print ANSI.hide_cursor
+    # raw + no echo for the whole loop so keypresses never get echoed onto the
+    # dashboard; intr: true keeps Ctrl-C delivering SIGINT to the runner's trap
+    STDIN.raw!(intr: true)
+    STDIN.echo = false
 
     begin
       loop do
@@ -945,6 +934,8 @@ class MedDash
         end
       end
     ensure
+      STDIN.cooked!
+      STDIN.echo = true
       print ANSI.clear
       print ANSI.end_alternative_buffer
       print ANSI.show_cursor

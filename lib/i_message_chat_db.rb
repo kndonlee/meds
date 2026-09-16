@@ -57,7 +57,9 @@ class IMessageChatDB
       end
     end
     query_str += ")
-      AND (now_epoch-message_epoch) <= #{@@query_history}
+      -- compare against the raw message.date column so SQLite can seek message_idx_date
+      -- instead of computing strftime() for every message in the chat
+      AND message.date >= (strftime (\"%s\", \"now\") - #{@@query_history} - strftime (\"%s\", \"2001-01-01\")) * 1000000000
     ORDER BY
       message_date ASC"
     @query = query_str
