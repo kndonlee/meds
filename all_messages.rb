@@ -21,7 +21,7 @@ if chat_ids.empty?
   raise "status=ERROR error=NO_CHAT_IDS file=#{chat_id_path}"
 end
 
-query_history = 365 * 86400 * 2
+query_history = 365 * 86400 * 5
 
 chat_ids_sql = chat_ids.map { |id| "'#{id.gsub("'", "''")}'" }.join(",")
 
