@@ -6,7 +6,20 @@ The STEMMA QT cable is wired yellow (GPIO40/SCL1) to IN, red (3.3V) to V+, and b
 Flashing CircuitPython: `esptool write-flash -z 0x0 adafruit-circuitpython-adafruit_qtpy_esp32s3_nopsram-en_US-10.3.2.bin`
 (erase first). Then copy `code.py` onto the CIRCUITPY drive.
 
-To send a code, write `<12 bits> [frames]\r` to the USB serial port; the board replies `sent ...`.
+Wi-Fi: create `settings.toml` on the CIRCUITPY drive. It is never committed:
+
+```toml
+WIFI_SSID = "your network"
+WIFI_PASSWORD = "your password"
+HOSTNAME = "heater-ir"
+```
+
+HTTP on port 80:
+- `GET /` returns JSON status.
+- `GET /press/<power|up|down|timer>?n=1` presses a button n times, 0.6s apart.
+- `GET /send/<12 bits>?frames=7` sends a raw code.
+
+USB serial also works: send `<12 bits> [frames]` or `<button> [n]`, ended with `\r`.
 
 Twin-Star 12-bit IR protocol (from Flipper-IRDB captures):
 - 38 kHz carrier
