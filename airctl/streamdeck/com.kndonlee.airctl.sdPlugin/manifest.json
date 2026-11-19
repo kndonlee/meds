@@ -1,0 +1,36 @@
+{
+  "Actions": [
+    {
+      "Icon": "action",
+      "Name": "CO2",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": false,
+      "Tooltip": "Live CO2 / temperature / AC state from the local airctl daemon (meds/airctl)",
+      "UUID": "com.kndonlee.airctl.co2"
+    }
+  ],
+  "SDKVersion": 2,
+  "Author": "meds/airctl",
+  "CodePath": "plugin.html",
+  "Category": "airctl",
+  "CategoryIcon": "category",
+  "Description": "Shows live CO2 from the airctl thermostat daemon (http://127.0.0.1:8788/status), colored green/orange/red like the Tivoo, with a blue AC indicator. Press to refresh.",
+  "Name": "airctl CO2",
+  "Icon": "plugin",
+  "Version": "1.0.0",
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "6.0"
+  }
+}
