@@ -8,6 +8,7 @@ import time
 import tomllib
 
 from .actuators import make_actuator, NoneActuator
+from .audioguard import AudioGuard
 from .controller import Condition, Controller
 from .datalog import DataLog
 from .display import make_display
@@ -96,6 +97,12 @@ async def run(cfg):
         return {**latest, "colors": list(dcfg.get("colors", [1100, 1500])),
                 "features": {c.name: c.snapshot() for c in controls}, "server_ts": time.time()}
 
+    gcfg = cfg.get("audio_guard", {})
+    guard = None
+    if gcfg.get("enabled", True):
+        gcfg = {k: v for k, v in gcfg.items() if k != "enabled"}
+        guard = asyncio.create_task(AudioGuard(datalog=datalog, **gcfg).run())
+
     wcfg = cfg.get("web", {})
     server = None
     if wcfg.get("enabled", True):
@@ -125,6 +132,8 @@ async def run(cfg):
             await display.show(reading, {c.name: c.on for c in controls})
     finally:
         wd.cancel()
+        if guard:
+            guard.cancel()
         if server:
             server.close()
         await display.close()

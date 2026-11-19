@@ -38,6 +38,17 @@ echo "Installing requirements..."
 "$VENV/bin/pip" install -q --disable-pip-version-check --upgrade pip
 "$VENV/bin/pip" install -q --disable-pip-version-check -r requirements.txt
 
+# Audio guard (keeps macOS from using the Tivoo as a speaker) needs SwitchAudioSource.
+BREW=$(command -v brew || ls /opt/homebrew/bin/brew /usr/local/bin/brew 2>/dev/null | head -1 || true)
+if ! command -v SwitchAudioSource >/dev/null && [[ ! -x /opt/homebrew/bin/SwitchAudioSource ]]; then
+  if [[ -n $BREW ]]; then
+    echo "Installing switchaudio-osx (audio guard)..."
+    "$BREW" install -q switchaudio-osx || echo "Warning: could not install switchaudio-osx"
+  else
+    echo "Warning: Homebrew not found; install switchaudio-osx for the audio guard."
+  fi
+fi
+
 if [[ ! -f config.toml ]]; then
   cp config.example.toml config.toml
   echo "Created config.toml from the example -- review thresholds and device addresses."

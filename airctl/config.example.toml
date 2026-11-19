@@ -23,6 +23,14 @@ enabled = true           # http://<host>:8788/status, /history?hours=24, /feedba
 host = "0.0.0.0"         # LAN-visible so other machines' meds dashboards can read it
 port = 8788
 
+[audio_guard]
+# The Tivoo is also a Bluetooth speaker; macOS may route sound to it when the display connects.
+# This switches output/system/input back within ~1s whenever a matching device is selected.
+enabled = true
+avoid = "Tivoo"
+fallback_output = "iMac Speakers"
+interval = 1
+
 [display]
 type = "tivoo"           # or "none"
 mac = "11-75-58-12-b2-23"
