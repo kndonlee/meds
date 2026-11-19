@@ -119,7 +119,7 @@ class TivooDisplay:
         # The Tivoo keeps its last brightness across reconnects; apply ours (matters for a fixed level).
         self.proc.stdin.write(f"brightness {0 if self.dark else self.brightness}\n".encode())
         await self.proc.stdin.drain()
-        log.info("tivoo link started, brightness %d%%", 0 if self.dark else self.brightness)
+        log.info("tivoo link starting (connecting), brightness %d%%", 0 if self.dark else self.brightness)
 
     def page_content(self, page, r):
         """(label, value, color) for a page, or None if the reading lacks it."""

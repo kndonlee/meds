@@ -39,7 +39,7 @@ enabled = true
 dark_below = 1.2          # lux at/below this ...
 dark_after_seconds = 120  # ... for this long -> screen off
 light_above = 1.8         # lux at/above this ...
-light_after_seconds = 10  # ... for this long -> screen back on
+light_after_seconds = 15  # ... for this long -> screen back on
 poll_seconds = 5
 
 [display]

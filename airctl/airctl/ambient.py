@@ -33,7 +33,7 @@ async def read_lux():
 
 
 class AmbientLight:
-    def __init__(self, dark_below=1.2, light_above=1.8, dark_after_seconds=120, light_after_seconds=10,
+    def __init__(self, dark_below=1.2, light_above=1.8, dark_after_seconds=120, light_after_seconds=15,
                  poll_seconds=5, on_change=None, on_reading=None):
         if dark_below >= light_above:
             raise ValueError("dark_below must be lower than light_above")
