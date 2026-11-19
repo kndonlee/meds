@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+#
+# Control the airctl daemon (CO2/temperature thermostat + Tivoo display).
+#
+#   ./airctlctl run                  foreground, for testing
+#   ./airctlctl install-service      launchd LaunchAgent: starts at login, restarts if it exits
+#   ./airctlctl uninstall-service    stop it and remove the LaunchAgent
+#   ./airctlctl restart              pick up config/code changes
+#   ./airctlctl status               launchd state + current readings
+#   ./airctlctl logs                 follow the log
+
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PY=".venv/bin/python"
+PLIST_LABEL="com.kndonlee.airctl"
+PLIST_PATH="$HOME/Library/LaunchAgents/${PLIST_LABEL}.plist"
+LOG_DIR="$HOME/Library/Logs"
+LOG="${LOG_DIR}/airctl.log"
+PORT=$(grep -E '^port *=' config.toml 2>/dev/null | head -1 | sed -E 's/.*= *([0-9]+).*/\1/' || true)
+PORT=${PORT:-8788}
+
+need_setup() {
+  [[ -x $PY ]] || { echo "Run ./setup.sh first." >&2; exit 1; }
+  [[ -f config.toml ]] || { echo "No config.toml; run ./setup.sh." >&2; exit 1; }
+}
+
+case "${1:-}" in
+  run)
+    need_setup
+    exec "$PY" -m airctl "${@:2}"
+    ;;
+  install-service)
+    need_setup
+    mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
+    cat > "$PLIST_PATH" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${PLIST_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(pwd)/${PY}</string>
+    <string>-m</string>
+    <string>airctl</string>
+  </array>
+  <key>WorkingDirectory</key><string>$(pwd)</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>StandardOutPath</key><string>${LOG}</string>
+  <key>StandardErrorPath</key><string>${LOG}</string>
+</dict>
+</plist>
+PLIST
+    launchctl bootout "gui/$(id -u)/${PLIST_LABEL}" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
+    echo "Installed ${PLIST_LABEL}: runs at login, restarts if it exits. Log: ${LOG}"
+    ;;
+  uninstall-service)
+    launchctl bootout "gui/$(id -u)/${PLIST_LABEL}" 2>/dev/null || true
+    rm -f "$PLIST_PATH"
+    echo "Removed ${PLIST_LABEL}."
+    ;;
+  restart)
+    launchctl kickstart -k "gui/$(id -u)/${PLIST_LABEL}"
+    echo "Restarted."
+    ;;
+  status)
+    launchctl print "gui/$(id -u)/${PLIST_LABEL}" 2>/dev/null | grep -E '^\s+(state|pid|last exit code) =' || echo "service not installed"
+    curl -sS --max-time 3 "http://127.0.0.1:${PORT}/status" && echo || echo "daemon not answering on :${PORT}"
+    ;;
+  logs)
+    tail -n 50 -f "$LOG"
+    ;;
+  *)
+    sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'
+    exit 2
+    ;;
+esac

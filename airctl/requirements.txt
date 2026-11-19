@@ -1,0 +1,4 @@
+pyobjc-framework-IOBluetooth
+aranet4
+msmart-ng
+httpx

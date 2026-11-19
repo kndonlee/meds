@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+ac.json
+config.toml
+data/
+*.log

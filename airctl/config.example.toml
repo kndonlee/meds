@@ -1,0 +1,60 @@
+# airctl config. Copy to config.toml (gitignored) and edit; setup.sh does this on first run.
+# Restart after edits: ./airctlctl restart
+#
+#   sensor  -> one source of readings
+#   control -> independent features; each has conditions + timing + an actuator
+#   display -> where readings and feature states are shown
+#
+# A feature turns ON when ANY of its conditions reaches on_above, stays on while any condition is
+# still above its off_below, and turns OFF only when ALL are at/below off_below -- and never sooner
+# than min_on_seconds after turning on (or min_off_seconds after turning off).
+# Metrics: co2 (ppm), temp_f, temp_c, humidity (%).
+
+[sensor]
+type = "aranet"          # passive BLE; later: an ESP32 + SCD30 source
+name = "Aranet4"         # substring of the device name, e.g. "296D4" to pick one
+
+[log]
+directory = "data"       # readings/events JSONL + status.json, read by the meds climate page
+keep_days = 14
+
+[web]
+enabled = true           # http://<host>:8788/status, /history?hours=24, /feedback?value=too_warm
+host = "0.0.0.0"         # LAN-visible so other machines' meds dashboards can read it
+port = 8788
+
+[display]
+type = "tivoo"           # or "none"
+mac = "11-75-58-12-b2-23"
+channel = 1
+colors = [1100, 1500]    # CO2: green < 1100 <= orange < 1500 <= red
+celsius = false
+# Status dot while a feature is on: name = [x, y, [r, g, b]]
+# dots = { ventilation = [0, 15, [0, 255, 120]], cooling = [15, 15, [0, 120, 255]] }
+
+# --- Cooling: Toshiba/Midea AC (local, key from ac_setup.py) ---
+# A single-hose portable only exhausts room air while the compressor runs, so the target is set to
+# the minimum (60F requested, clamped to the unit's 16C/61F) to keep the compressor on regardless.
+[[control]]
+name = "cooling"
+enabled = true
+min_on_seconds = 1200    # once on, run at least 20 min (also protects the compressor)
+min_off_seconds = 600    # once off, stay off at least 10 min
+stale_seconds = 900      # turn off if the sensor goes quiet this long
+conditions = [
+  { metric = "co2",    on_above = 1350, off_below = 900 },
+  { metric = "temp_f", on_above = 78,   off_below = 75 },
+]
+actuator = { type = "midea_ac", credentials = "ac.json", mode = "cool", fan_speed = "auto", target_temp_f = 60, beep = false, dry_run = false }
+
+# --- Ventilation: CO2 -> vent fan on a Kasa outlet (via kasad in ~/repos/meds/kasa) ---
+[[control]]
+name = "ventilation"
+enabled = false          # enable once the vent fan is plugged in
+min_on_seconds = 300
+min_off_seconds = 300
+stale_seconds = 900
+conditions = [
+  { metric = "co2", on_above = 1100, off_below = 800 },
+]
+actuator = { type = "kasad", alias = "vent-fan", url = "http://127.0.0.1:8787", dry_run = true }

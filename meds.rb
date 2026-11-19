@@ -13,6 +13,7 @@ require 'lib/colors'
 require 'lib/med'
 require 'lib/meds_config'
 require 'lib/med_logger'
+require 'lib/climate'
 
 APP_PATH = File.dirname(__FILE__)
 $LOAD_PATH.unshift APP_PATH
@@ -65,7 +66,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.9.0"
+    @version = "4.10.0"
     @hostname = `hostname`.strip.delete_suffix(".local")
     # crack_meds replaces @meds with empty Med objects and then re-logs every dose;
     # the announce timer thread must never observe that half-built state (every
@@ -82,6 +83,8 @@ class MedDash
     @last_totals_update = Time.now.to_i
     @last_notes_update = Time.now.to_i
     @last_log_update = Time.now.to_i
+    @last_climate_update = 0
+    @climate = Climate.new
     @mode = "d"
     @display_dash = true
     @display_totals = true
@@ -152,7 +155,7 @@ class MedDash
     host = "#{Colors.yellow_bold}Host:#{Colors.purple_bold}#{@hostname}"
     med_count = "#{Colors.yellow_bold}Take Count:#{Colors.purple_bold}#{med_count_to_take}"
 
-    usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [L]og [T]otals #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
+    usage = "#{Colors.yellow_bold}Usage: #{Colors.c47}[D]ash [L]og [T]otals [C]limate #{notes_usage_string} [S]ave [A]nnounce [Q]uit #{mute_string}"
     elapsed_key = "#{Colors.yellow_bold}Elapsed: #{elapsed_color_guide}"
 
     rows, cols = STDOUT.winsize
@@ -716,6 +719,19 @@ class MedDash
     end
   end
 
+  def climate_loop
+    now = Time.now.to_i
+    # redraw on demand, when fresh data arrives, and every 30s (for the 'ago' timers)
+    if @display_climate || @climate.updated_at > @last_climate_update || (now - @last_climate_update) >= 30
+      @display_climate = false
+      rows, cols = STDOUT.winsize
+      ANSI.move_cursor(1,1)
+      puts @climate.render(dashboard_header, cols: cols, rows: rows).gsub("\n", "#{ANSI.clear_line_right}\n")
+      cleanup_empty_lines
+      @last_climate_update = [now, @climate.updated_at].max
+    end
+  end
+
   def dash_update_interval
     1
   end
@@ -891,6 +907,10 @@ class MedDash
             @mode = "t"
             @display_totals = true
           elsif @mode == "t"
+            @mode = "c"
+            @display_climate = true
+            print ANSI.clear
+          elsif @mode == "c"
             @mode = "n"
             @display_notes = true
           else
@@ -913,6 +933,14 @@ class MedDash
         when "n"
           @mode = "n"
           @display_notes = true
+        when "c"
+          @mode = "c"
+          @display_climate = true
+          print ANSI.clear
+        when "0", "1", "2", "3", "4"
+          if @mode == "c" && @climate.handle_key(c)
+            @display_climate = true
+          end
         when "m"
           if @muted
             @muted = false
@@ -934,6 +962,8 @@ class MedDash
           totals_loop
         when "n"
           notes_loop
+        when "c"
+          climate_loop
         end
 
         sleep(0.1)
