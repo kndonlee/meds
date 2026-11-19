@@ -59,9 +59,25 @@ class Controller:
             raise ValueError("need at least one condition")
         self.conditions = conditions
         self.min_on, self.min_off, self.stale = min_on_seconds, min_off_seconds, stale_seconds
-        self.on = None              # unknown until the first reading
+        self.on = None              # unknown until synced from the device or the first reading
         self.changed_at = -1e9
         self.last_reading_at = None
+        self._seed_from_device_on = False
+
+    def sync(self, device_on, now=None):
+        """Adopt the device's real state at startup (so a restart mid-run keeps managing it).
+
+        If the device is already on, conditions whose first reading is above off_below are treated as
+        demanding (the device is mid-run), so it stays on until they fall to off_below. The min-on
+        timer restarts from now.
+        """
+        if self.on is not None or device_on is None:
+            return
+        now = time.monotonic() if now is None else now
+        self.on = bool(device_on)
+        if self.on:
+            self.changed_at = now
+            self._seed_from_device_on = True
 
     @property
     def metrics(self):
@@ -81,6 +97,11 @@ class Controller:
         for c in self.conditions:
             if values.get(c.metric) is not None:
                 c.update(values[c.metric], now)
+        if self._seed_from_device_on:
+            self._seed_from_device_on = False
+            for c in self.conditions:
+                if c.level is not None and c.level > c.off_below:
+                    c.demand = True
         want = bool(self.reasons())
 
         if self.on is None:

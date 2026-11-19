@@ -45,7 +45,8 @@ after turning on (or `min_off_seconds` after turning off). Commands are only sen
 remote/app changes stick until the next crossing. If the sensor goes quiet for `stale_seconds`, the
 feature turns off.
 
-Defaults: **cooling** on at CO₂ ≥ 1350 or ≥ 78°F, runs ≥ 20 min, off when CO₂ ≤ 900 and ≤ 75°F.
+Defaults: **cooling** on at CO₂ ≥ 1500 or ≥ 78°F, runs ≥ 20 min, off when CO₂ ≤ 1000 and ≤ 75°F.
+At startup it reads the device's real on/off state, so a restart mid-run keeps managing it.
 Setpoint 60°F (clamped to the unit's 61°F) keeps the compressor, and so the exhaust, running.
 Tivoo CO₂ colors: green < 1100 ≤ orange < 1500 ≤ red. Dots: bottom-right blue = AC on,
 bottom-left green = vent fan on.

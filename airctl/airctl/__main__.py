@@ -88,7 +88,14 @@ async def run(cfg):
     controls = [Control(c, datalog) for c in cfg.get("control", []) if c.pop("enabled", True)]
     log.info("controls: %s", ", ".join(f"{c.name} ({' or '.join(c.ctl.metrics)})" for c in controls)
              or "none (display only)")
+    for c in controls:
+        device_on = await c.actuator.get()
+        c.ctl.sync(device_on)
+        if device_on:
+            c.since = time.time()
+        log.info("%s: device is %s at startup", c.name, {True: "ON", False: "off", None: "unknown"}[device_on])
     datalog.event("start", features=[c.name for c in controls],
+                  device_state={c.name: c.ctl.on for c in controls},
                   config={c.name: c.ctl.snapshot() for c in controls})
 
     latest = {}

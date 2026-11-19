@@ -15,6 +15,9 @@ class NoneActuator:
     def __init__(self, label="device"):
         self.label = label
 
+    async def get(self):
+        return None
+
     async def set(self, on):
         log.info("[dry run] would turn %s %s", self.label, "ON" if on else "OFF")
 
@@ -41,6 +44,18 @@ class MideaAC:
         await ac.authenticate(self.cfg["token"], self.cfg["key"])
         await ac.get_capabilities()
         self.ac, self.AC = ac, AC
+
+    async def get(self):
+        """Current power state (None if unreachable)."""
+        try:
+            if self.ac is None:
+                await self._connect()
+            await self.ac.refresh()
+            return bool(self.ac.power_state)
+        except Exception as e:
+            log.warning("AC state read failed: %s", e)
+            self.ac = None
+            return None
 
     async def set(self, on):
         for attempt in (1, 2):
@@ -72,6 +87,16 @@ class KasadPlug:
 
     def __init__(self, alias, url="http://127.0.0.1:8787"):
         self.alias, self.url = alias, url.rstrip("/")
+
+    async def get(self):
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                body = (await client.get(f"{self.url}/state/{self.alias}")).json()
+            return body.get("state") == "on" if body.get("ok") else None
+        except Exception as e:
+            log.warning("plug state read failed: %s", e)
+            return None
 
     async def set(self, on):
         import httpx

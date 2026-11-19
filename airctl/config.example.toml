@@ -51,7 +51,7 @@ min_on_seconds = 1200    # once on, run at least 20 min (also protects the compr
 min_off_seconds = 600    # once off, stay off at least 10 min
 stale_seconds = 900      # turn off if the sensor goes quiet this long
 conditions = [
-  { metric = "co2",    on_above = 1350, off_below = 900 },
+  { metric = "co2",    on_above = 1500, off_below = 1000 },
   { metric = "temp_f", on_above = 78,   off_below = 75 },
 ]
 actuator = { type = "midea_ac", credentials = "ac.json", mode = "cool", fan_speed = "auto", target_temp_f = 60, beep = false, dry_run = false }
