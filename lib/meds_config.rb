@@ -43,6 +43,7 @@ module MedsConfig
     meds[:msm]            = Med.new(name: :msm,            interval:1.75, required:2,  default_dose:500,  half_life:8*3600,    max_dose:5000,  dose_units: :mg,   display: :no,        display_log:true,  announce:false,  emoji:"1F30B")
     meds[:magnesium]      = Med.new(name: :magnesium,      interval:4,    required:96, default_dose:48,   half_life:4*3600,    max_dose:192,   dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"1F33F")
     meds[:nac]            = Med.new(name: :nac,            interval:6,    required:24, default_dose:500,  half_life:5.6*3600,  max_dose:2000,  dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"26FD")
+    meds[:valtrex]        = Med.new(name: :valtrex,        interval:12,   required:24, default_dose:500,  half_life:3*3600,    max_dose:3000,  dose_units: :mg,   display: :yes,       display_log:true,  announce:false,  emoji:"1F48A")
     meds[:l_theanine]     = Med.new(name: :l_theanine,     interval:1,    required:48, default_dose:50,   half_life:1.2*3600,  max_dose:900,   dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1FAB7")
     meds[:apigenin]       = Med.new(name: :apigenin,       interval:12,   required:48, default_dose:25,   half_life:3600,      max_dose:0,     dose_units: :mg,   display: :no,        display_log:false, announce:false,  emoji:"1F48A")
 
@@ -107,6 +108,7 @@ module MedsConfig
     meds[:phys_thr].add_match_term("physical")
     meds[:phys_thr].add_match_term("physical therapy")
     meds[:choline_b].add_match_term("choline")
+    meds[:valtrex].add_match_term("valacyclovir")
     meds
   end
 end
