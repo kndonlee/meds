@@ -7,10 +7,11 @@ require 'uri'
 # Climate page for MedDash: CO2 / temperature / AC state from the airctl daemon (meds/airctl),
 # a 24h timeline, and an event log explaining why the AC turned on/off, plus comfort feedback keys.
 #
-# Data comes from airctl's HTTP API so it works from any Mac on the LAN. Override with
-#   CLIMATE_URL=http://host:8788
+# Data comes from the airctl daemon running on this same Mac (meds/airctl, :8788), so the whole
+# package runs wherever it is installed. To view another machine's daemon instead, set e.g.
+#   CLIMATE_URL=http://Kimberlys-iMac-M3.local:8788
 class Climate
-  DEFAULT_URL = 'http://Kimberlys-iMac-M3.local:8788'
+  DEFAULT_URL = 'http://127.0.0.1:8788'
   REFRESH_SECONDS = 20
   HOURS = 24
   BUCKET_MINUTES = 30
@@ -61,7 +62,14 @@ class Climate
     data, error = @lock.synchronize { [@data, @error] }
     out = +"#{header}\n\n"
     if data.nil?
-      out << "#{Colors.yellow_bold}Climate#{Colors.reset}  connecting to #{@url} ...#{error ? "  (#{error})" : ''}\n"
+      out << "#{Colors.yellow_bold}Climate#{Colors.reset}  connecting to #{@url} ...\n"
+      if error&.include?('refused') && @url.include?('127.0.0.1')
+        out << "\n#{Colors.c244}airctl isn't running on this Mac. Start it with:\n" \
+               "  cd #{File.expand_path('../airctl', __dir__)} && ./setup.sh && ./airctlctl install-service\n" \
+               "or view another Mac's: CLIMATE_URL=http://<host>.local:8788 ./meds#{Colors.reset}\n"
+      elsif error
+        out << "#{Colors.c196}#{error}#{Colors.reset}\n"
+      end
       return out
     end
 
