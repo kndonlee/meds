@@ -35,7 +35,10 @@ class Updater
       `git pull 2>&1 > /dev/null`
       @last_dash_update = now
       new_sha = `git rev-parse HEAD`
-      return new_sha != @current_sha
+      if new_sha != @current_sha
+        MedLogger.instance.log("Update found (#{@current_sha.strip[0, 7]} -> #{new_sha.strip[0, 7]}), restarting.")
+        return true
+      end
     end
 
     return false
@@ -66,7 +69,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.11.0"
+    @version = "4.11.1"
     @hostname = `hostname`.strip.delete_suffix(".local")
     # crack_meds replaces @meds with empty Med objects and then re-logs every dose;
     # the announce timer thread must never observe that half-built state (every
@@ -759,8 +762,6 @@ class MedDash
 
       cleanup_empty_lines
     end
-
-    exit if @updater.updated?
   end
 
   def save_totals
@@ -952,6 +953,9 @@ class MedDash
         when "q"
           exit
         end
+
+        # auto-update: the runner (./meds) restarts us on the new version
+        exit if @updater.updated?
 
         case @mode
         when "d"
