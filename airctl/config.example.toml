@@ -29,6 +29,7 @@ port = 8788
 enabled = true
 avoid = "Tivoo"
 fallback_output = "iMac Speakers"
+fallback_input = "iMac Microphone"
 interval = 1
 
 [display]

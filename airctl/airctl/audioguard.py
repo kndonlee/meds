@@ -17,9 +17,10 @@ CANDIDATES = ["SwitchAudioSource", "/opt/homebrew/bin/SwitchAudioSource", "/usr/
 
 
 class AudioGuard:
-    def __init__(self, avoid="Tivoo", fallback_output="iMac Speakers", interval=1, datalog=None):
+    def __init__(self, avoid="Tivoo", fallback_output="iMac Speakers", fallback_input="iMac Microphone",
+                 interval=1, datalog=None):
         self.avoid = avoid.lower()
-        self.fallback = {"output": fallback_output, "system": fallback_output, "input": None}
+        self.fallback = {"output": fallback_output, "system": fallback_output, "input": fallback_input}
         self.interval = interval
         self.datalog = datalog
         self.last_good = {}
@@ -39,7 +40,7 @@ class AudioGuard:
             if self.avoid not in current.lower():
                 self.last_good[kind] = current
                 continue
-            target = self.last_good.get(kind) or self.fallback.get(kind)
+            target = (self.fallback.get(kind) if kind == "input" else None) or self.last_good.get(kind) or self.fallback.get(kind)
             if not target:
                 devices = (await self._run("-a", "-t", kind)).splitlines()
                 target = next((d for d in devices if self.avoid not in d.lower()), None)
