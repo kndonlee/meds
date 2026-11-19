@@ -16,6 +16,7 @@ class Reading:
     temp_c: float | None = None
     humidity: float | None = None
     pressure_hpa: float | None = None
+    battery: int | None = None
     source: str = ""
     at: float = field(default_factory=time.monotonic)
 

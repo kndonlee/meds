@@ -106,6 +106,15 @@ FONT_3X5 = {
     "C": ["###", "#..", "#..", "#..", "###"],
     "F": ["###", "#..", "##.", "#..", "#.."],
     "%": ["#.#", "..#", ".#.", "#..", "#.#"],
+    "A": [".#.", "#.#", "###", "#.#", "#.#"],
+    "B": ["##.", "#.#", "##.", "#.#", "##."],
+    "E": ["###", "#..", "###", "#..", "###"],
+    "H": ["#.#", "#.#", "###", "#.#", "#.#"],
+    "M": ["#.#", "###", "###", "#.#", "#.#"],
+    "O": ["###", "#.#", "#.#", "#.#", "###"],
+    "P": ["###", "#.#", "###", "#..", "#.."],
+    "R": ["##.", "#.#", "##.", "#.#", "#.#"],
+    "T": ["###", ".#.", ".#.", ".#.", ".#."],
     ".": [".", ".", ".", ".", "#"],
 }
 
@@ -402,6 +411,60 @@ def send(mac, channel, messages):
     print("Done.")
 
 
+def _spec(spec, palette):
+    text, _, rgb = spec.rpartition(":")
+    if not text:
+        text, rgb = rgb, "255,255,255"
+    color = tuple(int(v) for v in rgb.split(","))
+    if len(color) != 3 or not all(0 <= v <= 255 for v in color):
+        raise ValueError(f"bad color in {spec!r}")
+    if color not in palette:
+        palette.append(color)
+    return text, palette.index(color)
+
+
+def _draw_text(px, text, idx, y0, yscale=1):
+    if any(c not in FONT_3X5 for c in text):
+        fail(f"unsupported characters in {text!r} (allowed: {''.join(FONT_3X5)})")
+    w = text_width(text)
+    if w > 16:
+        fail(f"{text!r} is {w}px wide; max 16")
+    x = (16 - w + 1) // 2
+    for ch in text:
+        glyph = FONT_3X5[ch]
+        for gy, row in enumerate(glyph):
+            for gx, c in enumerate(row):
+                if c == "#":
+                    for sy in range(yscale):
+                        px[(y0 + gy * yscale + sy) * 16 + x + gx] = idx
+        x += len(glyph[0]) + 1
+
+
+def msg_page(specs):
+    """Single-metric page: ["LABEL:r,g,b", "VALUE:r,g,b", "@x,y:r,g,b"...].
+
+    Row 0 is free for pixels (progress/status dots), label on rows 1-5, value double-height on rows 6-15.
+    """
+    palette, texts, dots = [(0, 0, 0)], [], []
+    for spec in specs:
+        text, idx = _spec(spec, palette)
+        if text.startswith("@"):
+            x, y = (int(v) for v in text[1:].split(","))
+            if not (0 <= x < 16 and 0 <= y < 16):
+                raise ValueError(f"pixel out of range in {spec!r}")
+            dots.append((x, y, idx))
+        else:
+            texts.append((text, idx))
+    if len(texts) != 2:
+        raise ValueError("page needs a label and a value")
+    px = [0] * 256
+    _draw_text(px, texts[0][0], texts[0][1], 1)
+    _draw_text(px, texts[1][0], texts[1][1], 6, yscale=2)
+    for x, y, idx in dots:
+        px[y * 16 + x] = idx
+    return msg_image(px, palette)
+
+
 def msg_lines(specs):
     """specs = ["TEXT:r,g,b", ...] -> image message with one text line per spec.
 
@@ -441,6 +504,8 @@ def parse_line(line):
             return msg_image(render_number(rest[0]), [(0, 0, 0), fg])
         if cmd == "lines" and rest:
             return msg_lines(rest)
+        if cmd == "page" and rest:
+            return msg_page(rest)
         if cmd == "color" and len(rest) == 3:
             return msg_color(*(int(x) for x in rest))
         if cmd == "brightness" and len(rest) == 1:

@@ -38,8 +38,15 @@ mac = "11-75-58-12-b2-23"
 channel = 1
 colors = [1100, 1500]    # CO2: green < 1100 <= orange < 1500 <= red
 celsius = false
-# Status dot while a feature is on: name = [x, y, [r, g, b]]
-# dots = { ventilation = [0, 15, [0, 255, 120]], cooling = [15, 15, [0, 120, 255]] }
+# Rotating single-metric pages (reduces LED burn-in). A dim dot walks across the top row during each
+# page; the screen changes when it reaches the right. Pages: co2, temp, humidity, pressure, battery
+# (battery is added automatically when below battery_warn_below %).
+pages = ["co2", "temp", "humidity"]
+page_seconds = 5
+frame_seconds = 0.5
+battery_warn_below = 15
+# Status dot while a feature is on (top-right by default): name = [x, y, [r, g, b]]
+# dots = { ventilation = [14, 0, [0, 255, 120]], cooling = [15, 0, [0, 120, 255]] }
 
 # --- Cooling: Toshiba/Midea AC (local, key from ac_setup.py) ---
 # A single-hose portable only exhausts room air while the compressor runs, so the target is set to

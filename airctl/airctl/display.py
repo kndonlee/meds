@@ -1,14 +1,21 @@
-"""Displays: show readings + ventilation state. Add new types to DISPLAYS."""
+"""Displays: show readings + feature states. Add new types to DISPLAYS."""
 
 import asyncio
 import logging
 import os
 import sys
+import time
 
 log = logging.getLogger(__name__)
 
-POC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GREEN, ORANGE, RED = (0, 220, 0), (255, 170, 0), (255, 0, 0)
+LABEL = (110, 110, 110)
+PROGRESS = (90, 90, 90)
+
+
+def rgb(c):
+    return f"{c[0]},{c[1]},{c[2]}"
 
 
 class NoneDisplay:
@@ -23,18 +30,35 @@ class NoneDisplay:
 
 
 class TivooDisplay:
-    """Drives `tivoo.py stream` as a subprocess (IOBluetooth needs its own run loop/process)."""
+    """Rotating single-metric pages on the Tivoo (limits LED burn-in).
 
-    # Status dots for control loops, by name: (x, y, color). Bottom corners are free next to "43%".
-    DEFAULT_DOTS = {"ventilation": [0, 15, [0, 255, 120]], "cooling": [15, 15, [0, 120, 255]]}
+    Each page shows for `page_seconds`: label on top, value in double-height digits. A dim dot walks
+    across the top row during the page (the screen is about to change when it reaches the right),
+    and per-feature status dots sit at the top-right. Drives `tivoo.py stream` as a subprocess
+    (IOBluetooth needs its own run loop/process).
+    """
 
-    def __init__(self, mac, channel=1, colors=(1100, 1500), celsius=False, dots=None):
-        """colors = (orange_from, red_from) in ppm: green below the first, red at/above the second."""
+    # Status dots while a feature is on: name -> [x, y, [r, g, b]] (top-right corner).
+    DEFAULT_DOTS = {"ventilation": [14, 0, [0, 255, 120]], "cooling": [15, 0, [0, 120, 255]]}
+    PROGRESS_SPAN = 12          # progress dot walks x = 0..11, leaving room for status dots
+
+    def __init__(self, mac, channel=1, colors=(1100, 1500), celsius=False, dots=None,
+                 pages=("co2", "temp", "humidity"), page_seconds=5, frame_seconds=0.5, battery_warn_below=15):
+        """colors = (orange_from, red_from) in ppm: green below the first, red at/above the second.
+        pages: any of co2, temp, humidity, pressure, battery (battery is also added automatically
+        when it drops below battery_warn_below %)."""
         self.mac, self.channel = mac, channel
         self.orange_from, self.red_from = colors
         self.celsius = celsius
         self.dots = dots if dots is not None else self.DEFAULT_DOTS
+        self.pages = list(pages)
+        self.page_seconds = page_seconds
+        self.frame_seconds = frame_seconds
+        self.battery_warn = battery_warn_below
         self.proc = None
+        self.reading = None
+        self.states = {}
+        self.ticker = None
 
     async def _ensure(self):
         if self.proc and self.proc.returncode is None:
@@ -43,33 +67,75 @@ class TivooDisplay:
             log.warning("tivoo display exited (%s); restarting", self.proc.returncode)
             await asyncio.sleep(5)
         self.proc = await asyncio.create_subprocess_exec(
-            sys.executable, os.path.join(POC_DIR, "tivoo.py"), "--channel", str(self.channel),
-            "stream", self.mac, stdin=asyncio.subprocess.PIPE)
+            sys.executable, os.path.join(APP_DIR, "tivoo.py"), "--channel", str(self.channel),
+            "stream", self.mac, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.DEVNULL)
 
-    def format(self, reading, states):
-        co2 = min(reading.co2, 9999)
-        c = RED if co2 >= self.red_from else ORANGE if co2 >= self.orange_from else GREEN
-        parts = [f"{co2}:{c[0]},{c[1]},{c[2]}"]
-        temp = reading.temp_c if self.celsius else reading.temp_f
-        if temp is not None:
-            parts.append(f"{round(temp)}{'C' if self.celsius else 'F'}:220,220,220")
-        if reading.humidity is not None:
-            parts.append(f"{min(round(reading.humidity), 99)}%:0,140,255")
-        for name, on in states.items():
+    def page_content(self, page, r):
+        """(label, value, color) for a page, or None if the reading lacks it."""
+        if page == "co2":
+            co2 = min(r.co2, 9999)
+            c = RED if co2 >= self.red_from else ORANGE if co2 >= self.orange_from else GREEN
+            return "CO2", str(co2), c
+        if page == "temp":
+            t = r.temp_c if self.celsius else r.temp_f
+            return None if t is None else ("TEMP", f"{round(t)}{'C' if self.celsius else 'F'}", (220, 220, 220))
+        if page == "humidity":
+            return None if r.humidity is None else ("RH", f"{min(round(r.humidity), 99)}%", (0, 140, 255))
+        if page == "pressure":
+            return None if r.pressure_hpa is None else ("HPA", str(round(r.pressure_hpa)), (180, 120, 255))
+        if page == "battery":
+            if r.battery is None:
+                return None
+            return "BAT", f"{min(r.battery, 99)}%", RED if r.battery < self.battery_warn else (220, 200, 0)
+        return None
+
+    def active_pages(self, r):
+        pages = list(self.pages)
+        if r.battery is not None and r.battery < self.battery_warn and "battery" not in pages:
+            pages.append("battery")
+        return [p for p in pages if self.page_content(p, r)]
+
+    def frame(self, now=None):
+        """Stream command for the current moment."""
+        now = time.time() if now is None else now
+        r = self.reading
+        pages = self.active_pages(r)
+        slot = int(now // self.page_seconds)
+        page = pages[slot % len(pages)]
+        label, value, color = self.page_content(page, r)
+        progress = (now % self.page_seconds) / self.page_seconds
+        parts = [f"{label}:{rgb(LABEL)}", f"{value}:{rgb(color)}",
+                 f"@{min(int(progress * self.PROGRESS_SPAN), self.PROGRESS_SPAN - 1)},0:{rgb(PROGRESS)}"]
+        for name, on in self.states.items():
             if on and name in self.dots:
-                x, y, (r, g, b) = self.dots[name]
-                parts.append(f"@{x},{y}:{r},{g},{b}")
-        return "lines " + " ".join(parts) + "\n"
+                x, y, c = self.dots[name]
+                parts.append(f"@{x},{y}:{rgb(c)}")
+        return "page " + " ".join(parts) + "\n"
+
+    async def _tick(self):
+        # Frames aligned to the wall clock so pages change exactly on page_seconds boundaries.
+        interval = self.frame_seconds
+        while True:
+            await asyncio.sleep(interval - (time.time() % interval) + 0.01)
+            if self.reading is None:
+                continue
+            try:
+                await self._ensure()
+                self.proc.stdin.write(self.frame().encode())
+                await self.proc.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError) as e:
+                log.warning("tivoo display write failed: %s", e)
+            except Exception as e:
+                log.warning("tivoo frame error: %s", e)
 
     async def show(self, reading, states):
-        try:
-            await self._ensure()
-            self.proc.stdin.write(self.format(reading, states).encode())
-            await self.proc.stdin.drain()
-        except (BrokenPipeError, ConnectionResetError) as e:
-            log.warning("tivoo display write failed: %s", e)
+        self.reading, self.states = reading, dict(states)
+        if self.ticker is None:
+            self.ticker = asyncio.create_task(self._tick())
 
     async def close(self):
+        if self.ticker:
+            self.ticker.cancel()
         if self.proc and self.proc.returncode is None:
             self.proc.stdin.close()
             await self.proc.wait()
@@ -83,4 +149,6 @@ def make_display(cfg):
     kind = cfg.pop("type")
     if "colors" in cfg:
         cfg["colors"] = tuple(cfg["colors"])
+    if "pages" in cfg:
+        cfg["pages"] = tuple(cfg["pages"])
     return DISPLAYS[kind](**cfg)

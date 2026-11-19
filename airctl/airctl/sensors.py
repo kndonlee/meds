@@ -33,7 +33,8 @@ class AranetSensor:
             last_ago = r.ago
             if is_new:
                 queue.put_nowait(Reading(co2=r.co2, temp_c=r.temperature, humidity=r.humidity,
-                                         pressure_hpa=r.pressure, source=adv.device.name or "aranet"))
+                                         pressure_hpa=r.pressure, battery=r.battery if r.battery >= 0 else None,
+                                         source=adv.device.name or "aranet"))
 
         scanner = Aranet4Scanner(on_adv)
         await scanner.start()

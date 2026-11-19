@@ -49,8 +49,9 @@ Defaults: **cooling** runs only for CO₂: on at ≥ 1500, off as soon as ≤ 11
 loud), then rests ≥ 10 min. A temperature condition is included but commented out.
 At startup it reads the device's real on/off state, so a restart mid-run keeps managing it.
 Setpoint 60°F (clamped to the unit's 61°F) keeps the compressor, and so the exhaust, running.
-Tivoo CO₂ colors: green < 1100 ≤ orange < 1500 ≤ red. Dots: bottom-right blue = AC on,
-bottom-left green = vent fan on.
+Tivoo: rotating 5 s pages (CO₂ → TEMP → RH; pressure/battery optional, battery auto-added when low),
+value in double-height digits, a dim progress dot walking the top row. CO₂ colors: green < 1100 ≤
+orange < 1500 ≤ red. Status dots top-right: blue = AC on, green = vent fan on.
 
 Kim's comfort notes (Climate page keys 1–4, 0) land in the event log with the readings at that moment.
 
