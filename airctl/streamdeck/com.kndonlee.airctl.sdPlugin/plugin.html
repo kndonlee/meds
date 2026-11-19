@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>airctl CO2</title></head>
+<head><meta charset="utf-8"><title>airctl</title></head>
 <body>
 <script>
-// Stream Deck HTML plugin (SDK 2). Polls the local airctl daemon and draws CO2 on each key using it.
-// Status JSON: { co2, temp_f, humidity, reading_ts, colors: [orange_from, red_from], features: { cooling: { on } } }
-const STATUS_URL = "http://127.0.0.1:8788/status";
+// Stream Deck HTML plugin (SDK 2) for the local airctl daemon.
+//   com.kndonlee.airctl.co2 : live CO2 / temp / AC indicator (press = refresh)
+//   com.kndonlee.airctl.ac  : AC on/off for manual control (press = toggle; airctl holds it, then resumes)
+// Status JSON: { co2, temp_f, reading_ts, colors, features: { cooling: { on, manual_remaining_s } } }
+const BASE = "http://127.0.0.1:8788";
 const POLL_MS = 5000;
 const STALE_S = 300;
+const FONT = "-apple-system, Helvetica, Arial, sans-serif";
 
 let ws = null;
-const contexts = new Set();
-let last = null;      // last status JSON
+const keys = new Map();   // context -> action UUID
+let last = null;
 let lastError = null;
+const busy = new Set();   // AC contexts mid-toggle
 
 function send(obj) {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
@@ -25,7 +29,7 @@ function co2Color(v, colors) {
   return "#00dc64";
 }
 
-function draw() {
+function canvas() {
   const c = document.createElement("canvas");
   c.width = 144; c.height = 144;
   const g = c.getContext("2d");
@@ -33,50 +37,7 @@ function draw() {
   g.fillRect(0, 0, 144, 144);
   g.textAlign = "center";
   g.textBaseline = "middle";
-
-  const st = last;
-  const now = Date.now() / 1000;
-  const stale = !st || !st.reading_ts || now - st.reading_ts > STALE_S;
-
-  // label
-  g.fillStyle = "#8a98a2";
-  g.font = "600 22px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText("CO₂", 72, 24);
-
-  if (!st || st.co2 == null) {
-    g.fillStyle = "#6b7880";
-    g.font = "700 48px -apple-system, Helvetica, Arial, sans-serif";
-    g.fillText("--", 72, 74);
-    g.font = "500 18px -apple-system, Helvetica, Arial, sans-serif";
-    g.fillText(lastError ? "offline" : "waiting", 72, 120);
-  } else {
-    const color = co2Color(st.co2, st.colors);
-    g.globalAlpha = stale ? 0.45 : 1;
-    g.fillStyle = color;
-    const text = String(st.co2);
-    g.font = `800 ${text.length >= 4 ? 50 : 58}px -apple-system, Helvetica, Arial, sans-serif`;
-    g.fillText(text, 72, 72);
-    // color bar
-    g.fillRect(22, 100, 100, 5);
-    g.globalAlpha = 1;
-    // bottom line: temp + AC indicator
-    const cooling = st.features && st.features.cooling && st.features.cooling.on;
-    g.font = "500 18px -apple-system, Helvetica, Arial, sans-serif";
-    g.fillStyle = "#c7d0d6";
-    const temp = st.temp_f != null ? `${Math.round(st.temp_f)}°F` : "";
-    if (cooling) {
-      g.fillText(temp, 52, 125);
-      g.fillStyle = "#1e90ff";
-      roundRect(g, 80, 113, 42, 24, 7); g.fill();
-      g.fillStyle = "#ffffff";
-      g.font = "700 16px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText("AC", 101, 126);
-    } else {
-      g.fillText(stale ? "stale" : temp, 72, 125);
-    }
-  }
-  const image = c.toDataURL("image/png");
-  for (const ctx of contexts) send({ event: "setImage", context: ctx, payload: { image, target: 0 } });
+  return [c, g];
 }
 
 function roundRect(g, x, y, w, h, r) {
@@ -85,9 +46,87 @@ function roundRect(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
 
+function drawCO2() {
+  const [c, g] = canvas();
+  const st = last;
+  const now = Date.now() / 1000;
+  const stale = !st || !st.reading_ts || now - st.reading_ts > STALE_S;
+  g.fillStyle = "#8a98a2";
+  g.font = `600 22px ${FONT}`;
+  g.fillText("CO₂", 72, 24);
+  if (!st || st.co2 == null) {
+    g.fillStyle = "#6b7880";
+    g.font = `700 48px ${FONT}`;
+    g.fillText("--", 72, 74);
+    g.font = `500 18px ${FONT}`;
+    g.fillText(lastError ? "offline" : "waiting", 72, 120);
+  } else {
+    g.globalAlpha = stale ? 0.45 : 1;
+    g.fillStyle = co2Color(st.co2, st.colors);
+    const text = String(st.co2);
+    g.font = `800 ${text.length >= 4 ? 50 : 58}px ${FONT}`;
+    g.fillText(text, 72, 72);
+    g.fillRect(22, 100, 100, 5);
+    g.globalAlpha = 1;
+    const cooling = st.features && st.features.cooling && st.features.cooling.on;
+    g.font = `500 18px ${FONT}`;
+    g.fillStyle = "#c7d0d6";
+    const temp = st.temp_f != null ? `${Math.round(st.temp_f)}°F` : "";
+    if (cooling) {
+      g.fillText(temp, 52, 125);
+      g.fillStyle = "#1e90ff";
+      roundRect(g, 80, 113, 42, 24, 7); g.fill();
+      g.fillStyle = "#ffffff";
+      g.font = `700 16px ${FONT}`;
+      g.fillText("AC", 101, 126);
+    } else {
+      g.fillText(stale ? "stale" : temp, 72, 125);
+    }
+  }
+  return c.toDataURL("image/png");
+}
+
+function drawAC(ctx) {
+  const [c, g] = canvas();
+  const f = last && last.features && last.features.cooling;
+  g.fillStyle = "#8a98a2";
+  g.font = `600 22px ${FONT}`;
+  g.fillText("AC", 72, 24);
+  if (busy.has(ctx)) {
+    g.fillStyle = "#c7d0d6";
+    g.font = `700 30px ${FONT}`;
+    g.fillText("…", 72, 72);
+  } else if (!f) {
+    g.fillStyle = "#6b7880";
+    g.font = `700 40px ${FONT}`;
+    g.fillText("--", 72, 72);
+    g.font = `500 18px ${FONT}`;
+    g.fillText(lastError ? "offline" : "waiting", 72, 120);
+  } else {
+    const on = !!f.on;
+    g.fillStyle = on ? "#1e90ff" : "#2a3238";
+    roundRect(g, 22, 46, 100, 52, 14); g.fill();
+    g.fillStyle = on ? "#ffffff" : "#8a98a2";
+    g.font = `800 34px ${FONT}`;
+    g.fillText(on ? "ON" : "OFF", 72, 73);
+    g.font = `500 17px ${FONT}`;
+    g.fillStyle = "#c7d0d6";
+    const m = f.manual_remaining_s || 0;
+    g.fillText(m > 0 ? `manual ${Math.ceil(m / 60)}m` : "auto", 72, 122);
+  }
+  return c.toDataURL("image/png");
+}
+
+function draw() {
+  for (const [ctx, action] of keys) {
+    const image = action === "com.kndonlee.airctl.ac" ? drawAC(ctx) : drawCO2();
+    send({ event: "setImage", context: ctx, payload: { image, target: 0 } });
+  }
+}
+
 async function poll() {
   try {
-    const res = await fetch(STATUS_URL, { cache: "no-store" });
+    const res = await fetch(BASE + "/status", { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     last = await res.json();
     lastError = null;
@@ -98,15 +137,33 @@ async function poll() {
   draw();
 }
 
+async function toggleAC(ctx) {
+  if (busy.has(ctx)) return;
+  busy.add(ctx); draw();
+  try {
+    const res = await fetch(BASE + "/control?feature=cooling&set=toggle&source=streamdeck", { cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "HTTP " + res.status);
+    send({ event: "showOk", context: ctx });
+  } catch (e) {
+    send({ event: "showAlert", context: ctx });
+  } finally {
+    busy.delete(ctx);
+    poll();
+  }
+}
+
 // Called by the Stream Deck app when it loads the plugin.
 function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
   ws = new WebSocket("ws://127.0.0.1:" + inPort);
   ws.onopen = () => send({ event: inRegisterEvent, uuid: inPluginUUID });
   ws.onmessage = (evt) => {
     const msg = JSON.parse(evt.data);
-    if (msg.event === "willAppear") { contexts.add(msg.context); draw(); poll(); }
-    else if (msg.event === "willDisappear") { contexts.delete(msg.context); }
-    else if (msg.event === "keyDown") { poll(); }
+    if (msg.event === "willAppear") { keys.set(msg.context, msg.action); draw(); poll(); }
+    else if (msg.event === "willDisappear") { keys.delete(msg.context); }
+    else if (msg.event === "keyDown") {
+      if (msg.action === "com.kndonlee.airctl.ac") toggleAC(msg.context); else poll();
+    }
   };
   setInterval(poll, POLL_MS);
   poll();

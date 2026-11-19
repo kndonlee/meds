@@ -13,6 +13,20 @@
       "SupportedInMultiActions": false,
       "Tooltip": "Live CO2 / temperature / AC state from the local airctl daemon (meds/airctl)",
       "UUID": "com.kndonlee.airctl.co2"
+    },
+    {
+      "Icon": "action",
+      "Name": "AC on/off",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Toggle the AC by hand through airctl; the thermostat resumes after manual_hold_minutes",
+      "UUID": "com.kndonlee.airctl.ac"
     }
   ],
   "SDKVersion": 2,
@@ -20,10 +34,10 @@
   "CodePath": "plugin.html",
   "Category": "airctl",
   "CategoryIcon": "category",
-  "Description": "Shows live CO2 from the airctl thermostat daemon (http://127.0.0.1:8788/status), colored green/orange/red like the Tivoo, with a blue AC indicator. Press to refresh.",
+  "Description": "Live CO2 and manual AC control from the airctl thermostat daemon (http://127.0.0.1:8788).",
   "Name": "airctl CO2",
   "Icon": "plugin",
-  "Version": "1.0.0",
+  "Version": "1.1.0",
   "OS": [
     {
       "Platform": "mac",

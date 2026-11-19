@@ -3,6 +3,7 @@
   GET /status                      current snapshot (status.json)
   GET /history?hours=24            {"status", "events", "readings"} for the last N hours
   GET /feedback?value=too_warm     log a comfort note (too_warm, too_cold, stuffy, too_loud, ok)
+  GET /control?feature=cooling&set=on|off|toggle   manual switch; automation resumes after manual_hold_minutes
   GET /healthz
 """
 
@@ -36,8 +37,8 @@ def read_jsonl_since(directory, kind, since):
 
 
 class Web:
-    def __init__(self, datalog, state_fn, host="0.0.0.0", port=8788):
-        self.datalog, self.state_fn = datalog, state_fn
+    def __init__(self, datalog, state_fn, host="0.0.0.0", port=8788, control_fn=None):
+        self.datalog, self.state_fn, self.control_fn = datalog, state_fn, control_fn
         self.host, self.port = host, port
 
     async def start(self):
@@ -55,14 +56,25 @@ class Web:
                 return await self._send(writer, 405, {"ok": False, "error": "GET only"})
             url = urlparse(parts[1])
             q = {k: v[0] for k, v in parse_qs(url.query).items()}
-            code, body = self._route(url.path, q)
+            code, body = await self._route(url.path, q)
             await self._send(writer, code, body)
         except Exception as e:  # never let a bad request hurt the control loop
             log.debug("http error: %s", e)
         finally:
             writer.close()
 
-    def _route(self, path, q):
+    async def _route(self, path, q):
+        if path == "/control" and self.control_fn:
+            action = q.get("set", "")
+            if action not in ("on", "off", "toggle"):
+                return 400, {"ok": False, "error": "set must be on, off or toggle"}
+            try:
+                on = await self.control_fn(q.get("feature", "cooling"), action, q.get("source", "manual")[:40])
+            except KeyError as e:
+                return 404, {"ok": False, "error": str(e)}
+            except Exception as e:
+                return 502, {"ok": False, "error": f"device: {e}"}
+            return 200, {"ok": True, "on": on}
         if path == "/healthz":
             return 200, {"ok": True}
         if path == "/status":
@@ -86,7 +98,7 @@ class Web:
 
     async def _send(self, writer, code, body):
         data = json.dumps(body).encode()
-        reason = {200: "OK", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed"}.get(code, "")
+        reason = {200: "OK", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed", 502: "Bad Gateway"}.get(code, "")
         writer.write(f"HTTP/1.1 {code} {reason}\r\nContent-Type: application/json\r\n"
                      f"Content-Length: {len(data)}\r\nAccess-Control-Allow-Origin: *\r\n"
                      f"Connection: close\r\n\r\n".encode() + data)

@@ -63,6 +63,18 @@ class Controller:
         self.changed_at = -1e9
         self.last_reading_at = None
         self._seed_from_device_on = False
+        self.manual_until = None    # monotonic time until which a manual on/off overrides automation
+
+    def manual(self, on, hold_seconds, now=None):
+        """Someone switched the device by hand: adopt it and keep automation off it for hold_seconds."""
+        now = time.monotonic() if now is None else now
+        self.on, self.changed_at = bool(on), now
+        self.manual_until = now + hold_seconds
+        self._seed_from_device_on = False
+
+    def manual_remaining(self, now=None):
+        now = time.monotonic() if now is None else now
+        return 0 if self.manual_until is None else max(0, int(self.manual_until - now))
 
     def sync(self, device_on, now=None):
         """Adopt the device's real state at startup (so a restart mid-run keeps managing it).
@@ -103,6 +115,10 @@ class Controller:
                 if c.level is not None and c.level > c.off_below:
                     c.demand = True
         want = bool(self.reasons())
+        if self.manual_until is not None:
+            if now < self.manual_until:
+                return None
+            self.manual_until = None
 
         if self.on is None:
             # Startup: act only if something already demands on. Otherwise assume off silently
@@ -148,6 +164,7 @@ class Controller:
             "on": bool(self.on),
             "hold_remaining_s": int(max(0, lock - held)) if self.changed_at > 0 else 0,
             "min_on_s": self.min_on, "min_off_s": self.min_off,
+            "manual_remaining_s": self.manual_remaining(now),
             "conditions": [{"metric": c.metric, "level": None if c.level is None else round(c.level, 1),
                             "demand": c.demand, "on_above": c.on_above, "off_below": c.off_below}
                            for c in self.conditions],
@@ -159,4 +176,6 @@ class Controller:
         held = now - self.changed_at
         lock = self.min_on if self.on else self.min_off
         hold = f", held {int(lock - held)}s more" if self.on is not None and held < lock else ""
+        if self.manual_remaining(now):
+            hold = f", manual for {self.manual_remaining(now) // 60}m more"
         return f"{state}{hold}; " + "; ".join(c.describe() for c in self.conditions)

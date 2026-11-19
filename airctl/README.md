@@ -9,7 +9,7 @@ Aranet4 ─BLE─► airctl ─┬─► cooling:     Toshiba AC (msmart-ng, loc
                        ├─► ventilation: Kasa outlet via kasad :8787   (disabled until the fan exists)
                        ├─► Tivoo (tivoo.py subprocess, Bluetooth Classic)
                        ├─► data/ readings-*.jsonl, events-*.jsonl, status.json
-                       └─► HTTP :8788  /status  /history?hours=24  /feedback?value=…
+                       └─► HTTP :8788  /status  /history?hours=24  /feedback?value=…  /control?feature=cooling&set=toggle
 meds.rb Climate page ◄── HTTP 127.0.0.1:8788 on the same Mac (CLIMATE_URL=http://host.local:8788 to view another)
 ```
 

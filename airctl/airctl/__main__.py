@@ -42,6 +42,7 @@ class Control:
         for c in conds:
             if c.get("metric") not in METRICS:
                 raise ValueError(f"{self.name}: unknown metric {c.get('metric')!r} (have {list(METRICS)})")
+        self.manual_hold = float(cfg.pop("manual_hold_minutes", 60)) * 60
         self.actuator = make_actuator(cfg.pop("actuator"), label=self.name)
         self.dry_run = isinstance(self.actuator, NoneActuator)
         self.ctl = Controller([Condition(**c) for c in conds], **cfg)
@@ -65,6 +66,18 @@ class Control:
             self.error = str(e)
             log.error("%s: actuator failed: %s", self.name, e)
             self.datalog.event("error", feature=self.name, message=str(e))
+
+    async def manual(self, action, source="manual"):
+        """action: on, off or toggle. Switches the device now and holds it for manual_hold_minutes."""
+        on = (not self.on) if action == "toggle" else action == "on"
+        await self.actuator.set(on)  # raises on failure; the caller reports it
+        self.ctl.manual(on, self.manual_hold)
+        self.since, self.error = time.time(), None
+        log.info("%s -> %s (%s, automation paused %dm)", self.name, "ON" if on else "OFF", source,
+                 self.manual_hold // 60)
+        self.datalog.event("switch", feature=self.name, on=on, reason=f"{source} (hold {int(self.manual_hold // 60)}m)",
+                           manual=True, dry_run=self.dry_run, conditions=self.ctl.snapshot()["conditions"])
+        return on
 
     async def feed(self, reading):
         values = {m: METRICS[m](reading) for m in self.ctl.metrics}
@@ -126,7 +139,16 @@ async def run(cfg):
     wcfg = cfg.get("web", {})
     server = None
     if wcfg.get("enabled", True):
-        server = await Web(datalog, state, wcfg.get("host", "0.0.0.0"), wcfg.get("port", 8788)).start()
+        async def control_fn(feature, action, source):
+            c = next((c for c in controls if c.name == feature), None)
+            if c is None:
+                raise KeyError(f"no control named {feature!r} (have {[c.name for c in controls]})")
+            on = await c.manual(action, source)
+            datalog.status(state())
+            return on
+
+        server = await Web(datalog, state, wcfg.get("host", "0.0.0.0"), wcfg.get("port", 8788),
+                           control_fn=control_fn).start()
 
     async def watchdog():
         while True:
