@@ -2,7 +2,7 @@
 
 Reads the built-in display's `AmbientBrightness` (lux as 16.16 fixed point, e.g. 217245 -> 3.3) from the
 IORegistry, falling back to the integer `CurrentLux` from the ALS driver. On Kimberly's iMac (M3) at
-night: lights on ~3.3, lights off with the screen on ~1.4.
+(M3): daytime ~2.1, lamp on ~3, lights off 0.1-1.7 (the sensor reads far below true room lux).
 
 `dark` turns True once lux stays <= dark_below for dark_after_seconds, and back to False once lux stays
 >= light_above for light_after_seconds (hysteresis + dwell so shadows/passers-by don't flicker it).
@@ -33,7 +33,7 @@ async def read_lux():
 
 
 class AmbientLight:
-    def __init__(self, dark_below=2.0, light_above=2.6, dark_after_seconds=120, light_after_seconds=10,
+    def __init__(self, dark_below=1.2, light_above=1.8, dark_after_seconds=120, light_after_seconds=10,
                  poll_seconds=5, on_change=None, on_reading=None):
         if dark_below >= light_above:
             raise ValueError("dark_below must be lower than light_above")

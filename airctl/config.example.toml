@@ -34,11 +34,11 @@ interval = 1
 
 [ambient]
 # Turn the Tivoo off when the room is dark, using the Mac's ambient light sensor (lux). Readings on
-# Kimberly's iMac at night: lights on ~3.3, lights off (screen on) ~1.4. Daylight is far higher.
+# Kimberly's iMac (sensor reads low): daytime room ~2.1, lamp on ~3, lights off 0.1-1.7.
 enabled = true
-dark_below = 2.0          # lux at/below this ...
+dark_below = 1.2          # lux at/below this ...
 dark_after_seconds = 120  # ... for this long -> screen off
-light_above = 2.6         # lux at/above this ...
+light_above = 1.8         # lux at/above this ...
 light_after_seconds = 10  # ... for this long -> screen back on
 poll_seconds = 5
 
