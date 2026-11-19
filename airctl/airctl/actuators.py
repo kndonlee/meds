@@ -37,6 +37,7 @@ class MideaAC:
             self.cfg = json.load(f)
         self.mode, self.fan_speed, self.target_c = mode.upper(), fan_speed.upper(), (target_temp_f - 32) * 5 / 9
         self.ac = None
+        self.lock = asyncio.Lock()   # state checks and commands share one connection
 
     async def _connect(self):
         from msmart.device import AirConditioner as AC
@@ -47,22 +48,39 @@ class MideaAC:
 
     async def get(self):
         """Current power state (None if unreachable)."""
+        async with self.lock:
+            return await self._get()
+
+    async def _get(self):
         try:
             if self.ac is None:
                 await self._connect()
             await self.ac.refresh()
+            if not self.ac.online:
+                raise RuntimeError("no response")
             return bool(self.ac.power_state)
         except Exception as e:
             log.warning("AC state read failed: %s", e)
             self.ac = None
             return None
 
-    async def set(self, on):
-        for attempt in (1, 2):
+    async def set(self, on, attempts=3):
+        async with self.lock:
+            return await self._set(on, attempts)
+
+    async def _set(self, on, attempts):
+        """Send the command, then read the unit back; retry until it reports the requested state.
+
+        msmart logs timeouts instead of raising, so `online` and a read-back are the only proof it worked.
+        """
+        last = "unknown"
+        for attempt in range(1, attempts + 1):
             try:
                 if self.ac is None:
                     await self._connect()
                 await self.ac.refresh()
+                if not self.ac.online:
+                    raise RuntimeError("no response")
                 # refresh() can report the unit's sound flag back as on; set it every time
                 self.ac.sound = self.beep
                 self.ac.power_state = on
@@ -74,12 +92,21 @@ class MideaAC:
                     hi = getattr(self.ac, "max_target_temperature", None) or 30
                     self.ac.target_temperature = min(max(round(self.target_c * 2) / 2, lo), hi)
                 await self.ac.apply()
-                log.info("AC %s (%s, fan %s)", "ON" if on else "OFF", self.mode.lower(), self.fan_speed.lower())
+                await asyncio.sleep(2)
+                await self.ac.refresh()
+                if not self.ac.online:
+                    raise RuntimeError("no response after command")
+                if bool(self.ac.power_state) != on:
+                    raise RuntimeError(f"unit still reports {'ON' if self.ac.power_state else 'off'}")
+                log.info("AC %s (%s, fan %s), confirmed", "ON" if on else "OFF", self.mode.lower(),
+                         self.fan_speed.lower())
                 return
             except Exception as e:
-                log.warning("AC command failed (attempt %d): %s", attempt, e)
+                last = str(e)
+                log.warning("AC command failed (attempt %d/%d): %s", attempt, attempts, e)
                 self.ac = None
-        raise RuntimeError("AC unreachable")
+                await asyncio.sleep(3)
+        raise RuntimeError(f"AC did not confirm {'ON' if on else 'OFF'}: {last}")
 
 
 class KasadPlug:

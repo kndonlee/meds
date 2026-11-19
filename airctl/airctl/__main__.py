@@ -43,13 +43,17 @@ class Control:
             if c.get("metric") not in METRICS:
                 raise ValueError(f"{self.name}: unknown metric {c.get('metric')!r} (have {list(METRICS)})")
         self.manual_hold = float(cfg.pop("manual_hold_minutes", 60)) * 60
+        self.reconcile_every = float(cfg.pop("reconcile_seconds", 120))
+        self.last_reconcile = time.monotonic()
         self.actuator = make_actuator(cfg.pop("actuator"), label=self.name)
         self.dry_run = isinstance(self.actuator, NoneActuator)
         self.ctl = Controller([Condition(**c) for c in conds], **cfg)
         self.since = None          # wall-clock time of the last switch
         self.error = None
 
-    async def apply(self, decision, reason):
+    async def apply(self, decision, reason, prev=None):
+        """prev: (on, changed_at) before the decision, restored if the device can't be switched so the
+        next reading retries instead of believing a switch that never happened."""
         if decision is None:
             return
         now = time.time()
@@ -62,7 +66,8 @@ class Control:
             await self.actuator.set(decision)
             self.error = None
         except Exception as e:
-            # Leave controller state as decided; the next threshold crossing retries.
+            if prev is not None:
+                self.ctl.on, self.ctl.changed_at = prev
             self.error = str(e)
             log.error("%s: actuator failed: %s", self.name, e)
             self.datalog.event("error", feature=self.name, message=str(e))
@@ -81,9 +86,26 @@ class Control:
 
     async def feed(self, reading):
         values = {m: METRICS[m](reading) for m in self.ctl.metrics}
+        prev = (self.ctl.on, self.ctl.changed_at)
         decision = self.ctl.update(values)
         if decision is not None:
-            await self.apply(decision, self.ctl.explain(decision))
+            await self.apply(decision, self.ctl.explain(decision), prev)
+
+    async def reconcile(self):
+        """Compare with the device's real state; adopt changes made outside airctl (remote, panel,
+        a command that was lost) and treat them like a manual switch."""
+        if self.ctl.on is None:
+            return
+        device_on = await self.actuator.get()
+        if device_on is None or device_on == bool(self.ctl.on):
+            return
+        log.warning("%s: device is %s but airctl thought %s; adopting it (manual hold %dm)", self.name,
+                    "ON" if device_on else "off", "ON" if self.ctl.on else "off", self.manual_hold // 60)
+        self.ctl.manual(device_on, self.manual_hold)
+        self.since = time.time()
+        self.datalog.event("switch", feature=self.name, on=device_on, manual=True,
+                           reason=f"changed outside airctl (hold {int(self.manual_hold // 60)}m)",
+                           dry_run=self.dry_run, conditions=self.ctl.snapshot()["conditions"])
 
     def snapshot(self):
         return {**self.ctl.snapshot(), "since": self.since, "dry_run": self.dry_run, "error": self.error}
@@ -157,6 +179,12 @@ async def run(cfg):
                 d = c.ctl.check_stale()
                 if d is not None:
                     await c.apply(d, f"no sensor readings for {c.ctl.stale}s, failing safe")
+                if c.reconcile_every and time.monotonic() - c.last_reconcile >= c.reconcile_every:
+                    c.last_reconcile = time.monotonic()
+                    try:
+                        await c.reconcile()
+                    except Exception as e:
+                        log.warning("%s: reconcile failed: %s", c.name, e)
 
     wd = asyncio.create_task(watchdog())
     try:
