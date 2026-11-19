@@ -116,6 +116,10 @@ class TivooDisplay:
         self.proc = await asyncio.create_subprocess_exec(
             sys.executable, os.path.join(APP_DIR, "tivoo.py"), "--channel", str(self.channel),
             "stream", self.mac, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.DEVNULL)
+        # The Tivoo keeps its last brightness across reconnects; apply ours (matters for a fixed level).
+        self.proc.stdin.write(f"brightness {0 if self.dark else self.brightness}\n".encode())
+        await self.proc.stdin.drain()
+        log.info("tivoo link started, brightness %d%%", 0 if self.dark else self.brightness)
 
     def page_content(self, page, r):
         """(label, value, color) for a page, or None if the reading lacks it."""
