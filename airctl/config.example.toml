@@ -55,7 +55,12 @@ pages = ["co2", "temp", "humidity"]
 page_seconds = 5
 frame_seconds = 0.5
 battery_warn_below = 15
-brightness = 100         # restored when the room gets light again
+brightness = 100         # fixed level, or the starting level when auto_brightness is set
+# Daytime auto-brightness from the [ambient] lux reading: [lux, percent] points, interpolated on a
+# log scale. Night (room dark) still turns the screen off. Remove to keep a fixed brightness.
+auto_brightness = [[4, 10], [30, 25], [150, 50], [1000, 100]]
+brightness_step = 5      # ignore changes smaller than this (%)
+brightness_ramp = 10     # max change per ambient poll (%), so it eases rather than jumps
 # Status dot while a feature is on (top-right by default): name = [x, y, [r, g, b]]
 # dots = { ventilation = [14, 0, [0, 255, 120]], cooling = [15, 0, [0, 120, 255]] }
 

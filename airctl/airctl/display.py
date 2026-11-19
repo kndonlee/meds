@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import math
 import os
 import sys
 import time
@@ -22,7 +23,41 @@ class NoneDisplay:
     def __init__(self, **_ignored):
         pass
 
+    def target_brightness(self, lux):
+        """Brightness % for a lux level from the curve (log-lux interpolation, clamped at the ends)."""
+        pts = self.curve
+        if lux <= pts[0][0]:
+            return round(pts[0][1])
+        if lux >= pts[-1][0]:
+            return round(pts[-1][1])
+        for (l0, p0), (l1, p1) in zip(pts, pts[1:]):
+            if l0 <= lux <= l1:
+                f = (math.log10(lux) - math.log10(l0)) / (math.log10(l1) - math.log10(l0))
+                return round(p0 + f * (p1 - p0))
+
+    async def set_lux(self, lux):
+        """Called on every ambient reading: adjust brightness toward the curve (not while dark)."""
+        if not self.curve or lux is None or lux <= 0:
+            return
+        target = self.target_brightness(lux)
+        if abs(target - self.brightness) < self.step:
+            self._first_lux = False
+            return
+        delta = target - self.brightness if self._first_lux else max(-self.ramp, min(self.ramp, target - self.brightness))
+        self._first_lux = False
+        self.brightness = int(max(1, min(100, self.brightness + delta)))
+        if self.dark:
+            return  # remembered; applied when the room gets light again
+        try:
+            await self._send(f"brightness {self.brightness}")
+            log.info("tivoo brightness %d%% (%.1f lux, target %d%%)", self.brightness, lux, target)
+        except Exception as e:
+            log.warning("tivoo brightness command failed: %s", e)
+
     async def set_dark(self, dark):
+        pass
+
+    async def set_lux(self, lux):
         pass
 
     async def show(self, reading, states):
@@ -47,10 +82,13 @@ class TivooDisplay:
 
     def __init__(self, mac, channel=1, colors=(1100, 1500), celsius=False, dots=None,
                  pages=("co2", "temp", "humidity"), page_seconds=5, frame_seconds=0.5, battery_warn_below=15,
-                 brightness=100):
+                 brightness=100, auto_brightness=None, brightness_step=5, brightness_ramp=10):
         """colors = (orange_from, red_from) in ppm: green below the first, red at/above the second.
         pages: any of co2, temp, humidity, pressure, battery (battery is also added automatically
-        when it drops below battery_warn_below %)."""
+        when it drops below battery_warn_below %).
+        brightness: fixed level, or the fallback until a lux reading arrives when auto_brightness is set.
+        auto_brightness: [[lux, percent], ...] curve, interpolated on a log-lux scale; changes smaller
+        than brightness_step are ignored and each update moves at most brightness_ramp points."""
         self.mac, self.channel = mac, channel
         self.orange_from, self.red_from = colors
         self.celsius = celsius
@@ -63,7 +101,10 @@ class TivooDisplay:
         self.reading = None
         self.states = {}
         self.ticker = None
-        self.brightness = brightness
+        self.brightness = brightness       # level currently applied (or to restore after dark)
+        self.curve = sorted((float(l), float(p)) for l, p in auto_brightness) if auto_brightness else None
+        self.step, self.ramp = brightness_step, brightness_ramp
+        self._first_lux = True
         self.dark = False           # set by set_dark(): screen off, no frames sent
 
     async def _ensure(self):
@@ -138,6 +179,37 @@ class TivooDisplay:
         await self._ensure()
         self.proc.stdin.write("".join(f"{l}\n" for l in lines).encode())
         await self.proc.stdin.drain()
+
+    def target_brightness(self, lux):
+        """Brightness % for a lux level from the curve (log-lux interpolation, clamped at the ends)."""
+        pts = self.curve
+        if lux <= pts[0][0]:
+            return round(pts[0][1])
+        if lux >= pts[-1][0]:
+            return round(pts[-1][1])
+        for (l0, p0), (l1, p1) in zip(pts, pts[1:]):
+            if l0 <= lux <= l1:
+                f = (math.log10(lux) - math.log10(l0)) / (math.log10(l1) - math.log10(l0))
+                return round(p0 + f * (p1 - p0))
+
+    async def set_lux(self, lux):
+        """Called on every ambient reading: adjust brightness toward the curve (not while dark)."""
+        if not self.curve or lux is None or lux <= 0:
+            return
+        target = self.target_brightness(lux)
+        if abs(target - self.brightness) < self.step:
+            self._first_lux = False
+            return
+        delta = target - self.brightness if self._first_lux else max(-self.ramp, min(self.ramp, target - self.brightness))
+        self._first_lux = False
+        self.brightness = int(max(1, min(100, self.brightness + delta)))
+        if self.dark:
+            return  # remembered; applied when the room gets light again
+        try:
+            await self._send(f"brightness {self.brightness}")
+            log.info("tivoo brightness %d%% (%.1f lux, target %d%%)", self.brightness, lux, target)
+        except Exception as e:
+            log.warning("tivoo brightness command failed: %s", e)
 
     async def set_dark(self, dark):
         """Dark: black frame + brightness 0, stop sending frames. Light: restore brightness, resume."""

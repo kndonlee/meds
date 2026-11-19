@@ -119,7 +119,8 @@ async def run(cfg):
         async def on_dark(dark, lux):
             datalog.event("display", on=not dark, reason=f"room {'dark' if dark else 'light'} ({lux:.1f} lux)")
             await display.set_dark(dark)
-        ambient = AmbientLight(on_change=on_dark, **{k: v for k, v in acfg.items() if k != "enabled"})
+        ambient = AmbientLight(on_change=on_dark, on_reading=display.set_lux,
+                               **{k: v for k, v in acfg.items() if k != "enabled"})
         ambient_task = asyncio.create_task(ambient.run())
 
     wcfg = cfg.get("web", {})

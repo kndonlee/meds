@@ -34,13 +34,14 @@ async def read_lux():
 
 class AmbientLight:
     def __init__(self, dark_below=2.0, light_above=2.6, dark_after_seconds=120, light_after_seconds=10,
-                 poll_seconds=5, on_change=None):
+                 poll_seconds=5, on_change=None, on_reading=None):
         if dark_below >= light_above:
             raise ValueError("dark_below must be lower than light_above")
         self.dark_below, self.light_above = dark_below, light_above
         self.dark_after, self.light_after = dark_after_seconds, light_after_seconds
         self.poll = poll_seconds
         self.on_change = on_change
+        self.on_reading = on_reading
         self.lux = None
         self.dark = False
         self._candidate_since = None
@@ -74,6 +75,8 @@ class AmbientLight:
                     log.info("room is now %s (%.1f lux)", "DARK" if changed else "light", lux)
                     if self.on_change:
                         await self.on_change(changed, lux)
+                if self.on_reading and lux is not None:
+                    await self.on_reading(lux)
             except Exception as e:
                 log.debug("ambient read failed: %s", e)
             await asyncio.sleep(self.poll)
