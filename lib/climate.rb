@@ -130,6 +130,7 @@ class Climate
     s << "   #{Colors.white_bold}#{st['temp_f'] ? format('%.1f', st['temp_f']) : '--'}F#{Colors.reset}"
     s << "   #{Colors.c39}#{st['humidity'] || '--'}% RH#{Colors.reset}"
     s << "   #{Colors.c244}reading #{ago(st['reading_ts'])} ago#{Colors.reset}"
+    s << "   #{Colors.c244}room #{st['lux']} lux#{st['display_dark'] ? ', Tivoo off (dark)' : ''}#{Colors.reset}" unless st['lux'].nil?
     s << "   #{Colors.c196}SENSOR STALE#{Colors.reset}" if stale
     s << "   #{Colors.c196}(dashboard: #{error})#{Colors.reset}" if error
     s
@@ -236,6 +237,8 @@ class Climate
           "#{Colors.c244}AC #{e.dig('features', 'cooling') ? 'on' : 'off'}#{Colors.reset}"
       when 'error'
         "#{Colors.c244}#{t}#{Colors.reset}  #{Colors.c196}#{e['feature']} error: #{e['message']}#{Colors.reset}"
+      when 'display'
+        "#{Colors.c244}#{t}  Tivoo #{e['on'] ? 'on' : 'off'}: #{e['reason']}#{Colors.reset}"
       when 'start'
         "#{Colors.c244}#{t}  airctl started#{Colors.reset}"
       end

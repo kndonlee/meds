@@ -22,6 +22,9 @@ class NoneDisplay:
     def __init__(self, **_ignored):
         pass
 
+    async def set_dark(self, dark):
+        pass
+
     async def show(self, reading, states):
         pass
 
@@ -43,7 +46,8 @@ class TivooDisplay:
     PROGRESS_SPAN = 12          # progress dot walks x = 0..11, leaving room for status dots
 
     def __init__(self, mac, channel=1, colors=(1100, 1500), celsius=False, dots=None,
-                 pages=("co2", "temp", "humidity"), page_seconds=5, frame_seconds=0.5, battery_warn_below=15):
+                 pages=("co2", "temp", "humidity"), page_seconds=5, frame_seconds=0.5, battery_warn_below=15,
+                 brightness=100):
         """colors = (orange_from, red_from) in ppm: green below the first, red at/above the second.
         pages: any of co2, temp, humidity, pressure, battery (battery is also added automatically
         when it drops below battery_warn_below %)."""
@@ -59,6 +63,8 @@ class TivooDisplay:
         self.reading = None
         self.states = {}
         self.ticker = None
+        self.brightness = brightness
+        self.dark = False           # set by set_dark(): screen off, no frames sent
 
     async def _ensure(self):
         if self.proc and self.proc.returncode is None:
@@ -117,7 +123,7 @@ class TivooDisplay:
         interval = self.frame_seconds
         while True:
             await asyncio.sleep(interval - (time.time() % interval) + 0.01)
-            if self.reading is None:
+            if self.reading is None or self.dark:
                 continue
             try:
                 await self._ensure()
@@ -127,6 +133,24 @@ class TivooDisplay:
                 log.warning("tivoo display write failed: %s", e)
             except Exception as e:
                 log.warning("tivoo frame error: %s", e)
+
+    async def _send(self, *lines):
+        await self._ensure()
+        self.proc.stdin.write("".join(f"{l}\n" for l in lines).encode())
+        await self.proc.stdin.drain()
+
+    async def set_dark(self, dark):
+        """Dark: black frame + brightness 0, stop sending frames. Light: restore brightness, resume."""
+        self.dark = dark
+        try:
+            if dark:
+                await self._send("black", "brightness 0")
+            else:
+                await self._send(f"brightness {self.brightness}")
+                if self.reading is not None:
+                    await self._send(self.frame().strip())
+        except Exception as e:
+            log.warning("tivoo dark-mode command failed: %s", e)
 
     async def show(self, reading, states):
         self.reading, self.states = reading, dict(states)

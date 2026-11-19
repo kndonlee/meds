@@ -8,6 +8,7 @@ import time
 import tomllib
 
 from .actuators import make_actuator, NoneActuator
+from .ambient import AmbientLight
 from .audioguard import AudioGuard
 from .controller import Condition, Controller
 from .datalog import DataLog
@@ -102,6 +103,8 @@ async def run(cfg):
 
     def state():
         return {**latest, "colors": list(dcfg.get("colors", [1100, 1500])),
+                "lux": None if ambient is None or ambient.lux is None else round(ambient.lux, 1),
+                "display_dark": bool(ambient and ambient.dark),
                 "features": {c.name: c.snapshot() for c in controls}, "server_ts": time.time()}
 
     gcfg = cfg.get("audio_guard", {})
@@ -109,6 +112,15 @@ async def run(cfg):
     if gcfg.get("enabled", True):
         gcfg = {k: v for k, v in gcfg.items() if k != "enabled"}
         guard = asyncio.create_task(AudioGuard(datalog=datalog, **gcfg).run())
+
+    acfg = cfg.get("ambient", {})
+    ambient = ambient_task = None
+    if acfg.get("enabled", False):
+        async def on_dark(dark, lux):
+            datalog.event("display", on=not dark, reason=f"room {'dark' if dark else 'light'} ({lux:.1f} lux)")
+            await display.set_dark(dark)
+        ambient = AmbientLight(on_change=on_dark, **{k: v for k, v in acfg.items() if k != "enabled"})
+        ambient_task = asyncio.create_task(ambient.run())
 
     wcfg = cfg.get("web", {})
     server = None
@@ -141,6 +153,8 @@ async def run(cfg):
         wd.cancel()
         if guard:
             guard.cancel()
+        if ambient_task:
+            ambient_task.cancel()
         if server:
             server.close()
         await display.close()

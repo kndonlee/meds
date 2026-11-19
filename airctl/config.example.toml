@@ -32,6 +32,16 @@ fallback_output = "iMac Speakers"
 fallback_input = "iMac Microphone"
 interval = 1
 
+[ambient]
+# Turn the Tivoo off when the room is dark, using the Mac's ambient light sensor (lux). Readings on
+# Kimberly's iMac at night: lights on ~3.3, lights off (screen on) ~1.4. Daylight is far higher.
+enabled = true
+dark_below = 2.0          # lux at/below this ...
+dark_after_seconds = 120  # ... for this long -> screen off
+light_above = 2.6         # lux at/above this ...
+light_after_seconds = 10  # ... for this long -> screen back on
+poll_seconds = 5
+
 [display]
 type = "tivoo"           # or "none"
 mac = "11-75-58-12-b2-23"
@@ -45,6 +55,7 @@ pages = ["co2", "temp", "humidity"]
 page_seconds = 5
 frame_seconds = 0.5
 battery_warn_below = 15
+brightness = 100         # restored when the room gets light again
 # Status dot while a feature is on (top-right by default): name = [x, y, [r, g, b]]
 # dots = { ventilation = [14, 0, [0, 255, 120]], cooling = [15, 0, [0, 120, 255]] }
 

@@ -53,6 +53,10 @@ Tivoo: rotating 5 s pages (CO₂ → TEMP → RH; pressure/battery optional, bat
 value in double-height digits, a dim progress dot walking the top row. CO₂ colors: green < 1100 ≤
 orange < 1500 ≤ red. Status dots top-right: blue = AC on, green = vent fan on.
 
+**Night mode:** with `[ambient]` enabled the Tivoo goes dark (black frame, brightness 0) when the Mac's
+ambient light sensor stays ≤ `dark_below` lux for `dark_after_seconds`, and comes back at ≥ `light_above`.
+The thermostat keeps running either way.
+
 Kim's comfort notes (Climate page keys 1–4, 0) land in the event log with the readings at that moment.
 
 ## Secrets

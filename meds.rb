@@ -66,7 +66,7 @@ class MedDash
 
   attr_accessor :meds
   def initialize
-    @version = "4.10.1"
+    @version = "4.11.0"
     @hostname = `hostname`.strip.delete_suffix(".local")
     # crack_meds replaces @meds with empty Med objects and then re-logs every dose;
     # the announce timer thread must never observe that half-built state (every

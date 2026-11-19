@@ -506,6 +506,8 @@ def parse_line(line):
             return msg_lines(rest)
         if cmd == "page" and rest:
             return msg_page(rest)
+        if cmd == "black":
+            return msg_image([0] * 256, [(0, 0, 0)])
         if cmd == "color" and len(rest) == 3:
             return msg_color(*(int(x) for x in rest))
         if cmd == "brightness" and len(rest) == 1:
