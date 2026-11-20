@@ -6,8 +6,17 @@
 // Stream Deck HTML plugin (SDK 2) for the local airctl daemon.
 //   com.kndonlee.airctl.co2 : live CO2 / temp / AC indicator (press = refresh)
 //   com.kndonlee.airctl.ac  : AC on/off for manual control (press = toggle; airctl holds it, then resumes)
-// Status JSON: { co2, temp_f, reading_ts, colors, features: { cooling: { on, manual_remaining_s } } }
+//   com.kndonlee.airctl.acdown / acup     : AC setpoint ~1F through airctl /control (shows the setpoint)
+//   com.kndonlee.airctl.heatdown / heatup : heater setpoint via the heater-ir board (no state readback)
+// Status JSON: { co2, temp_f, reading_ts, colors, features: { cooling: { on, manual_remaining_s, target_f } } }
 const BASE = "http://127.0.0.1:8788";
+const HEATER = "http://192.168.1.116";  // heater-ir board (QT Py ESP32-S3); .local lookups are slow
+// The heater's first up/down press only wakes the setpoint (it blinks); later presses within this
+// window change it 1F. So a press after a quiet spell sends two (wake + step), otherwise one.
+const HEATER_WAKE_MS = 5000;
+let heaterLast = 0;
+const ARROW = { "com.kndonlee.airctl.acdown": "down", "com.kndonlee.airctl.acup": "up",
+                "com.kndonlee.airctl.heatdown": "down", "com.kndonlee.airctl.heatup": "up" };
 const POLL_MS = 5000;
 const STALE_S = 300;
 const FONT = "-apple-system, Helvetica, Arial, sans-serif";
@@ -117,9 +126,41 @@ function drawAC(ctx) {
   return c.toDataURL("image/png");
 }
 
+function arrow(g, dir, color) {
+  g.fillStyle = color;
+  g.beginPath();
+  if (dir === "up") { g.moveTo(72, 44); g.lineTo(104, 84); g.lineTo(40, 84); }
+  else { g.moveTo(40, 52); g.lineTo(104, 52); g.lineTo(72, 92); }
+  g.closePath(); g.fill();
+}
+
+function drawStep(ctx, action) {
+  const [c, g] = canvas();
+  const dir = ARROW[action];
+  const heater = action.includes(".heat");
+  g.fillStyle = "#8a98a2";
+  g.font = `600 22px ${FONT}`;
+  g.fillText(heater ? "HEAT" : "AC", 72, 24);
+  if (busy.has(ctx)) {
+    g.fillStyle = "#c7d0d6"; g.font = `700 30px ${FONT}`; g.fillText("…", 72, 72);
+    return c.toDataURL("image/png");
+  }
+  arrow(g, dir, heater ? "#ff7a1a" : "#1e90ff");
+  g.font = `500 18px ${FONT}`;
+  g.fillStyle = "#c7d0d6";
+  if (heater) {
+    g.fillText(dir === "up" ? "warmer" : "cooler", 72, 122);
+  } else {
+    const f = last && last.features && last.features.cooling;
+    g.fillText(f && f.target_f != null ? `set ${f.target_f}°F` : (lastError ? "offline" : "--"), 72, 122);
+  }
+  return c.toDataURL("image/png");
+}
+
 function draw() {
   for (const [ctx, action] of keys) {
-    const image = action === "com.kndonlee.airctl.ac" ? drawAC(ctx) : drawCO2();
+    const image = ARROW[action] ? drawStep(ctx, action)
+      : action === "com.kndonlee.airctl.ac" ? drawAC(ctx) : drawCO2();
     send({ event: "setImage", context: ctx, payload: { image, target: 0 } });
   }
 }
@@ -153,6 +194,42 @@ async function toggleAC(ctx) {
   }
 }
 
+async function acStep(ctx, action) {
+  if (busy.has(ctx)) return;
+  busy.add(ctx); draw();
+  try {
+    const set = ARROW[action] === "up" ? "temp_up" : "temp_down";
+    const res = await fetch(`${BASE}/control?feature=cooling&set=${set}&source=streamdeck`, { cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "HTTP " + res.status);
+    send({ event: "showOk", context: ctx });
+  } catch (e) {
+    send({ event: "showAlert", context: ctx });
+  } finally {
+    busy.delete(ctx);
+    poll();
+  }
+}
+
+async function heaterStep(ctx, action) {
+  if (busy.has(ctx)) return;
+  const now = Date.now();
+  const n = now - heaterLast > HEATER_WAKE_MS ? 2 : 1;
+  heaterLast = now;
+  busy.add(ctx); draw();
+  try {
+    // The board sends no CORS headers; an opaque response still means it was reached.
+    await fetch(`${HEATER}/press/${ARROW[action]}?n=${n}`, { mode: "no-cors", cache: "no-store" });
+    heaterLast = Date.now();
+    send({ event: "showOk", context: ctx });
+  } catch (e) {
+    send({ event: "showAlert", context: ctx });
+  } finally {
+    busy.delete(ctx);
+    draw();
+  }
+}
+
 // Called by the Stream Deck app when it loads the plugin.
 function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
   ws = new WebSocket("ws://127.0.0.1:" + inPort);
@@ -162,7 +239,10 @@ function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, in
     if (msg.event === "willAppear") { keys.set(msg.context, msg.action); draw(); poll(); }
     else if (msg.event === "willDisappear") { keys.delete(msg.context); }
     else if (msg.event === "keyDown") {
-      if (msg.action === "com.kndonlee.airctl.ac") toggleAC(msg.context); else poll();
+      if (msg.action === "com.kndonlee.airctl.ac") toggleAC(msg.context);
+      else if (msg.action.includes(".heat")) heaterStep(msg.context, msg.action);
+      else if (ARROW[msg.action]) acStep(msg.context, msg.action);
+      else poll();
     }
   };
   setInterval(poll, POLL_MS);

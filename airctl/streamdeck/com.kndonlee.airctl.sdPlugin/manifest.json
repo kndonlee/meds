@@ -27,6 +27,62 @@
       "SupportedInMultiActions": true,
       "Tooltip": "Toggle the AC by hand through airctl; the thermostat resumes after manual_hold_minutes",
       "UUID": "com.kndonlee.airctl.ac"
+    },
+    {
+      "Icon": "action",
+      "Name": "AC cooler",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Lower the AC setpoint about 1F through airctl",
+      "UUID": "com.kndonlee.airctl.acdown"
+    },
+    {
+      "Icon": "action",
+      "Name": "AC warmer",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Raise the AC setpoint about 1F through airctl",
+      "UUID": "com.kndonlee.airctl.acup"
+    },
+    {
+      "Icon": "action",
+      "Name": "Heater down",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Heater setpoint down 1F via the heater-ir board (wakes the display first)",
+      "UUID": "com.kndonlee.airctl.heatdown"
+    },
+    {
+      "Icon": "action",
+      "Name": "Heater up",
+      "States": [
+        {
+          "Image": "key",
+          "ShowTitle": false,
+          "TitleAlignment": "middle"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Heater setpoint up 1F via the heater-ir board (wakes the display first)",
+      "UUID": "com.kndonlee.airctl.heatup"
     }
   ],
   "SDKVersion": 2,
@@ -34,10 +90,10 @@
   "CodePath": "plugin.html",
   "Category": "airctl",
   "CategoryIcon": "category",
-  "Description": "Live CO2 and manual AC control from the airctl thermostat daemon (http://127.0.0.1:8788).",
+  "Description": "Live CO2, manual AC on/off and setpoint, and heater setpoint keys (airctl at http://127.0.0.1:8788, heater-ir board).",
   "Name": "airctl CO2",
   "Icon": "plugin",
-  "Version": "1.1.0",
+  "Version": "1.2.0",
   "OS": [
     {
       "Platform": "mac",

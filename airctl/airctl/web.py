@@ -4,6 +4,7 @@
   GET /history?hours=24            {"status", "events", "readings"} for the last N hours
   GET /feedback?value=too_warm     log a comfort note (too_warm, too_cold, stuffy, too_loud, ok)
   GET /control?feature=cooling&set=on|off|toggle   manual switch; automation resumes after manual_hold_minutes
+  GET /control?feature=cooling&set=temp_up|temp_down   nudge the AC setpoint ~1F (until restart)
   GET /healthz
 """
 
@@ -66,15 +67,15 @@ class Web:
     async def _route(self, path, q):
         if path == "/control" and self.control_fn:
             action = q.get("set", "")
-            if action not in ("on", "off", "toggle"):
-                return 400, {"ok": False, "error": "set must be on, off or toggle"}
+            if action not in ("on", "off", "toggle", "temp_up", "temp_down"):
+                return 400, {"ok": False, "error": "set must be on, off, toggle, temp_up or temp_down"}
             try:
-                on = await self.control_fn(q.get("feature", "cooling"), action, q.get("source", "manual")[:40])
+                out = await self.control_fn(q.get("feature", "cooling"), action, q.get("source", "manual")[:40])
             except KeyError as e:
                 return 404, {"ok": False, "error": str(e)}
             except Exception as e:
                 return 502, {"ok": False, "error": f"device: {e}"}
-            return 200, {"ok": True, "on": on}
+            return 200, {"ok": True, **out}
         if path == "/healthz":
             return 200, {"ok": True}
         if path == "/status":

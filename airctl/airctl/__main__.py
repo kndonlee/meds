@@ -107,8 +107,19 @@ class Control:
                            reason=f"changed outside airctl (hold {int(self.manual_hold // 60)}m)",
                            dry_run=self.dry_run, conditions=self.ctl.snapshot()["conditions"])
 
+    async def adjust_target(self, steps, source="manual"):
+        if not hasattr(self.actuator, "adjust_target"):
+            raise RuntimeError(f"{self.name}: actuator has no setpoint")
+        f = await self.actuator.adjust_target(steps)
+        log.info("%s setpoint -> %sF (%s)", self.name, f, source)
+        self.datalog.event("setpoint", feature=self.name, target_f=f, reason=source)
+        return f
+
     def snapshot(self):
-        return {**self.ctl.snapshot(), "since": self.since, "dry_run": self.dry_run, "error": self.error}
+        snap = {**self.ctl.snapshot(), "since": self.since, "dry_run": self.dry_run, "error": self.error}
+        if hasattr(self.actuator, "target_f"):
+            snap["target_f"] = self.actuator.target_f
+        return snap
 
     @property
     def on(self):
@@ -165,9 +176,12 @@ async def run(cfg):
             c = next((c for c in controls if c.name == feature), None)
             if c is None:
                 raise KeyError(f"no control named {feature!r} (have {[c.name for c in controls]})")
-            on = await c.manual(action, source)
+            if action in ("temp_up", "temp_down"):
+                out = {"target_f": await c.adjust_target(1 if action == "temp_up" else -1, source)}
+            else:
+                out = {"on": await c.manual(action, source)}
             datalog.status(state())
-            return on
+            return out
 
         server = await Web(datalog, state, wcfg.get("host", "0.0.0.0"), wcfg.get("port", 8788),
                            control_fn=control_fn).start()

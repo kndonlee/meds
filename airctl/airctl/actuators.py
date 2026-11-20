@@ -64,6 +64,42 @@ class MideaAC:
             self.ac = None
             return None
 
+    def _clamped_c(self):
+        """Target in C as the unit takes it: 0.5 C steps within its range (this Toshiba: 16-30 C)."""
+        lo = getattr(self.ac, "min_target_temperature", None) or 16
+        hi = getattr(self.ac, "max_target_temperature", None) or 30
+        return min(max(round(self.target_c * 2) / 2, lo), hi)
+
+    @property
+    def target_f(self):
+        return round(self._clamped_c() * 9 / 5 + 32)
+
+    async def adjust_target(self, steps):
+        """Move the setpoint by `steps` x 0.5 C (about 1 F on the unit's display). Kept for later ON
+        commands until restart; sent to the unit right away if it is running."""
+        async with self.lock:
+            before = self._clamped_c()
+            self.target_c = before + 0.5 * steps
+            after = self._clamped_c()
+            self.target_c = after
+            if after == before:
+                return self.target_f
+            try:
+                if self.ac is None:
+                    await self._connect()
+                await self.ac.refresh()
+                if not self.ac.online:
+                    raise RuntimeError("no response")
+                if self.ac.power_state:
+                    self.ac.sound = self.beep
+                    self.ac.target_temperature = after
+                    await self.ac.apply()
+            except Exception as e:
+                self.ac = None
+                raise RuntimeError(f"setpoint {self.target_f}F saved, but the unit did not take it: {e}")
+            log.info("AC setpoint %.1f C (%d F)", after, self.target_f)
+            return self.target_f
+
     async def set(self, on, attempts=3):
         async with self.lock:
             return await self._set(on, attempts)
@@ -87,10 +123,7 @@ class MideaAC:
                 if on:
                     self.ac.operational_mode = self.AC.OperationalMode[self.mode]
                     self.ac.fan_speed = self.AC.FanSpeed[self.fan_speed]
-                    # clamp to what the unit accepts (this Toshiba: 16-30 C)
-                    lo = getattr(self.ac, "min_target_temperature", None) or 16
-                    hi = getattr(self.ac, "max_target_temperature", None) or 30
-                    self.ac.target_temperature = min(max(round(self.target_c * 2) / 2, lo), hi)
+                    self.ac.target_temperature = self._clamped_c()
                 await self.ac.apply()
                 await asyncio.sleep(2)
                 await self.ac.refresh()
