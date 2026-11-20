@@ -75,7 +75,7 @@ min_off_seconds = 600    # once off, stay off at least 10 min
 stale_seconds = 900      # turn off if the sensor goes quiet this long
 manual_hold_minutes = 10 # after a manual on/off (Stream Deck AC key, /control), automation waits this long
 conditions = [
-  { metric = "co2",    on_above = 1500, off_below = 1100 },
+  { metric = "co2",    on_above = 1500, off_below = 1000 },
   # { metric = "temp_f", on_above = 78,   off_below = 75 },   # optional: also cool when hot
 ]
 actuator = { type = "midea_ac", credentials = "ac.json", mode = "cool", fan_speed = "auto", target_temp_f = 60, beep = false, dry_run = false }
