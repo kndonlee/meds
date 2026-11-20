@@ -42,7 +42,7 @@ class Control:
         for c in conds:
             if c.get("metric") not in METRICS:
                 raise ValueError(f"{self.name}: unknown metric {c.get('metric')!r} (have {list(METRICS)})")
-        self.manual_hold = float(cfg.pop("manual_hold_minutes", 60)) * 60
+        self.manual_hold = float(cfg.pop("manual_hold_minutes", 10)) * 60
         self.reconcile_every = float(cfg.pop("reconcile_seconds", 120))
         self.last_reconcile = time.monotonic()
         self.actuator = make_actuator(cfg.pop("actuator"), label=self.name)
