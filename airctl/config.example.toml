@@ -52,7 +52,7 @@ celsius = false
 # page; the screen changes when it reaches the right. Pages: co2, temp, humidity, pressure, battery
 # (battery is added automatically when below battery_warn_below %).
 pages = ["co2", "temp", "humidity"]
-page_seconds = 5
+page_seconds = { co2 = 10, temp = 3, humidity = 3, default = 3 }   # or one number for all
 frame_seconds = 0.5
 battery_warn_below = 15
 brightness = 100         # fixed level, or the starting level when auto_brightness is set

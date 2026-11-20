@@ -70,7 +70,8 @@ class NoneDisplay:
 class TivooDisplay:
     """Rotating single-metric pages on the Tivoo (limits LED burn-in).
 
-    Each page shows for `page_seconds`: label on top, value in double-height digits. A dim dot walks
+    Each page shows for `page_seconds` (a number, or a per-page table like {co2 = 10, temp = 3}
+    with `default` for the rest): label on top, value in double-height digits. A dim dot walks
     across the top row during the page (the screen is about to change when it reaches the right),
     and per-feature status dots sit at the top-right. Drives `tivoo.py stream` as a subprocess
     (IOBluetooth needs its own run loop/process).
@@ -94,7 +95,11 @@ class TivooDisplay:
         self.celsius = celsius
         self.dots = dots if dots is not None else self.DEFAULT_DOTS
         self.pages = list(pages)
-        self.page_seconds = page_seconds
+        if isinstance(page_seconds, dict):
+            self.page_durations = {k: float(v) for k, v in page_seconds.items() if k != "default"}
+            self.page_default = float(page_seconds.get("default", 5))
+        else:
+            self.page_durations, self.page_default = {}, float(page_seconds)
         self.frame_seconds = frame_seconds
         self.battery_warn = battery_warn_below
         self.proc = None
@@ -151,10 +156,14 @@ class TivooDisplay:
         now = time.time() if now is None else now
         r = self.reading
         pages = self.active_pages(r)
-        slot = int(now // self.page_seconds)
-        page = pages[slot % len(pages)]
+        durations = [self.page_durations.get(p, self.page_default) for p in pages]
+        t = now % sum(durations)
+        for page, d in zip(pages, durations):
+            if t < d:
+                break
+            t -= d
         label, value, color = self.page_content(page, r)
-        progress = (now % self.page_seconds) / self.page_seconds
+        progress = t / d
         parts = [f"{label}:{rgb(LABEL)}", f"{value}:{rgb(color)}",
                  f"@{min(int(progress * self.PROGRESS_SPAN), self.PROGRESS_SPAN - 1)},0:{rgb(PROGRESS)}"]
         for name, on in self.states.items():
