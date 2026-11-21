@@ -5,12 +5,13 @@
 <script>
 // Stream Deck HTML plugin (SDK 2) for the local airctl daemon.
 //   com.kndonlee.airctl.co2 : live CO2 / temp / AC indicator (press = refresh)
-//   com.kndonlee.airctl.ac  : AC on/off for manual control (press = toggle; airctl holds it, then resumes)
+//   com.kndonlee.airctl.ac  : AC on/off (tap = toggle) and AUTO/MANUAL mode (long press, >= LONG_MS)
 //   com.kndonlee.airctl.acdown / acup     : AC setpoint ~1F through airctl /control (shows the setpoint)
-//   com.kndonlee.airctl.heatdown / heatup : heater setpoint via the heater-ir board (no state readback)
-// Status JSON: { co2, temp_f, reading_ts, colors, features: { cooling: { on, manual_remaining_s, target_f } } }
+//   com.kndonlee.airctl.heatdown / heatup : heater setpoint via airctl's /heater relay (no state readback)
+// Status JSON: { co2, temp_f, reading_ts, colors, features: { cooling: { on, mode, mode_reason, target_f } } }
 const BASE = "http://127.0.0.1:8788";
-const HEATER = "http://192.168.1.116";  // heater-ir board (QT Py ESP32-S3); .local lookups are slow
+const LONG_MS = 600;
+const pressTimers = new Map();   // AC context -> long-press timer (deleted once it fires)
 // The heater's first up/down press only wakes the setpoint (it blinks); later presses within this
 // window change it 1F. So a press after a quiet spell sends two (wake + step), otherwise one.
 const HEATER_WAKE_MS = 5000;
@@ -118,10 +119,10 @@ function drawAC(ctx) {
     g.fillStyle = on ? "#ffffff" : "#8a98a2";
     g.font = `800 34px ${FONT}`;
     g.fillText(on ? "ON" : "OFF", 72, 73);
-    g.font = `500 17px ${FONT}`;
-    g.fillStyle = "#c7d0d6";
-    const m = f.manual_remaining_s || 0;
-    g.fillText(m > 0 ? `manual ${Math.ceil(m / 60)}m` : "auto", 72, 122);
+    g.font = `700 17px ${FONT}`;
+    if (f.mode === "manual" && f.mode_reason === "no_sensor") { g.fillStyle = "#ff3b30"; g.fillText("NO SENSOR", 72, 122); }
+    else if (f.mode === "manual") { g.fillStyle = "#ff9500"; g.fillText("MANUAL", 72, 122); }
+    else { g.font = `500 17px ${FONT}`; g.fillStyle = "#8a98a2"; g.fillText("auto", 72, 122); }
   }
   return c.toDataURL("image/png");
 }
@@ -178,11 +179,11 @@ async function poll() {
   draw();
 }
 
-async function toggleAC(ctx) {
+async function toggleAC(ctx, query = "set=toggle") {
   if (busy.has(ctx)) return;
   busy.add(ctx); draw();
   try {
-    const res = await fetch(BASE + "/control?feature=cooling&set=toggle&source=streamdeck", { cache: "no-store" });
+    const res = await fetch(`${BASE}/control?feature=cooling&${query}&source=streamdeck`, { cache: "no-store" });
     const body = await res.json();
     if (!res.ok || !body.ok) throw new Error(body.error || "HTTP " + res.status);
     send({ event: "showOk", context: ctx });
@@ -218,8 +219,9 @@ async function heaterStep(ctx, action) {
   heaterLast = now;
   busy.add(ctx); draw();
   try {
-    // The board sends no CORS headers; an opaque response still means it was reached.
-    await fetch(`${HEATER}/press/${ARROW[action]}?n=${n}`, { mode: "no-cors", cache: "no-store" });
+    const res = await fetch(`${BASE}/heater/press/${ARROW[action]}?n=${n}`, { cache: "no-store" });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.error || "HTTP " + res.status);
     heaterLast = Date.now();
     send({ event: "showOk", context: ctx });
   } catch (e) {
@@ -238,9 +240,21 @@ function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, in
     const msg = JSON.parse(evt.data);
     if (msg.event === "willAppear") { keys.set(msg.context, msg.action); draw(); poll(); }
     else if (msg.event === "willDisappear") { keys.delete(msg.context); }
+    else if (msg.event === "keyDown" && msg.action === "com.kndonlee.airctl.ac") {
+      // Tap toggles on key-up; holding LONG_MS switches AUTO/MANUAL (and never switches the AC).
+      const ctx = msg.context;
+      clearTimeout(pressTimers.get(ctx));
+      pressTimers.set(ctx, setTimeout(() => { pressTimers.delete(ctx); toggleAC(ctx, "mode=toggle"); }, LONG_MS));
+    }
+    else if (msg.event === "keyUp" && msg.action === "com.kndonlee.airctl.ac") {
+      if (pressTimers.has(msg.context)) {
+        clearTimeout(pressTimers.get(msg.context));
+        pressTimers.delete(msg.context);
+        toggleAC(msg.context);
+      }
+    }
     else if (msg.event === "keyDown") {
-      if (msg.action === "com.kndonlee.airctl.ac") toggleAC(msg.context);
-      else if (msg.action.includes(".heat")) heaterStep(msg.context, msg.action);
+      if (msg.action.includes(".heat")) heaterStep(msg.context, msg.action);
       else if (ARROW[msg.action]) acStep(msg.context, msg.action);
       else poll();
     }

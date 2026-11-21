@@ -24,8 +24,8 @@
           "TitleAlignment": "middle"
         }
       ],
-      "SupportedInMultiActions": true,
-      "Tooltip": "Toggle the AC by hand through airctl; the thermostat resumes after manual_hold_minutes",
+      "SupportedInMultiActions": false,
+      "Tooltip": "Tap: AC on/off (AUTO: on runs until the room cools, off pauses automation 10m). Hold: switch AUTO/MANUAL",
       "UUID": "com.kndonlee.airctl.ac"
     },
     {
@@ -67,7 +67,7 @@
         }
       ],
       "SupportedInMultiActions": true,
-      "Tooltip": "Heater setpoint down 1F via the heater-ir board (wakes the display first)",
+      "Tooltip": "Heater setpoint down 1F via airctl's heater-ir relay (wakes the display first)",
       "UUID": "com.kndonlee.airctl.heatdown"
     },
     {
@@ -81,7 +81,7 @@
         }
       ],
       "SupportedInMultiActions": true,
-      "Tooltip": "Heater setpoint up 1F via the heater-ir board (wakes the display first)",
+      "Tooltip": "Heater setpoint up 1F via airctl's heater-ir relay (wakes the display first)",
       "UUID": "com.kndonlee.airctl.heatup"
     }
   ],
@@ -93,7 +93,7 @@
   "Description": "Live CO2, manual AC on/off and setpoint, and heater setpoint keys (airctl at http://127.0.0.1:8788, heater-ir board).",
   "Name": "airctl CO2",
   "Icon": "plugin",
-  "Version": "1.2.0",
+  "Version": "1.3.0",
   "OS": [
     {
       "Platform": "mac",

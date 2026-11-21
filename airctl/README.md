@@ -37,6 +37,23 @@ The Tivoo accepts one controller at a time, so only one machine should run the s
 ./airctlctl uninstall-service
 ```
 
+## AC rules (cooling)
+
+**AUTO** (default): on at CO2 >= 1500, off at <= 1000, at least 10 min off between runs.
+- Manual **ON** (Stream Deck tap, `/control?set=on`, or the unit's remote, noticed within 2 min) starts a
+  *manual run*: it ignores CO2 and stays on until the Aranet reads <= `manual_run_until_temp_f` (68.0F),
+  for at least 10 min, then turns off and CO2 rules resume.
+- Manual **OFF**, including the unit stopping itself (full tank, fault), holds it off for 10 min.
+- No sensor reading for `stale_seconds` (15 min): switches to MANUAL ("no sensor") and turns the AC off.
+  The next reading returns it to AUTO.
+
+**MANUAL** (Stream Deck long press, `/control?mode=manual`): airctl never switches the AC, and taps
+just turn it on or off. The mode survives restarts (`data/control-state.json`). A long press goes back
+to AUTO, which applies the CO2 rules right away. The Stream Deck key shows `auto`, `MANUAL` or `NO SENSOR`.
+
+The heater Stream Deck keys go through `/heater/press/<button>`, a relay to the esp32-ir board that
+finds `heater-ir.local` over IPv4. It has no heater automation.
+
 ## Tuning (config.toml)
 
 Each `[[control]]` is an independent feature: it turns **on** when *any* condition reaches `on_above`,

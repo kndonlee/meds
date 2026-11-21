@@ -8,6 +8,8 @@
 # A feature turns ON when ANY of its conditions reaches on_above, stays on while any condition is
 # still above its off_below, and turns OFF only when ALL are at/below off_below -- and never sooner
 # than min_on_seconds after turning on (or min_off_seconds after turning off).
+# Manual changes (Stream Deck, /control, the unit's remote; see the cooling block) and AUTO/MANUAL
+# mode sit on top of that; the mode is kept in data/control-state.json across restarts.
 # Metrics: co2 (ppm), temp_f, temp_c, humidity (%).
 
 [sensor]
@@ -22,6 +24,11 @@ keep_days = 14
 enabled = true           # http://<host>:8788/status, /history?hours=24, /feedback?value=too_warm
 host = "0.0.0.0"         # LAN-visible so other machines' meds dashboards can read it
 port = 8788
+
+[heater_ir]
+# Relay for the Stream Deck heater keys: /heater/press/<button> -> the esp32-ir board (no automation).
+enabled = true
+host = "heater-ir.local"   # found by name over IPv4 (fast), re-resolved when its DHCP address changes
 
 [audio_guard]
 # The Tivoo is also a Bluetooth speaker; macOS may route sound to it when the display connects.
@@ -72,8 +79,12 @@ name = "cooling"
 enabled = true
 min_on_seconds = 0       # no minimum: off as soon as CO2 reaches off_below (the AC is loud)
 min_off_seconds = 600    # once off, stay off at least 10 min
-stale_seconds = 900      # turn off if the sensor goes quiet this long
-manual_hold_minutes = 10 # after a manual on/off (Stream Deck AC key, /control), automation waits this long
+stale_seconds = 900      # no reading this long (AUTO): MANUAL mode "no sensor" + off; back to AUTO on the next reading
+# AUTO mode, manual changes (Stream Deck AC key, /control, or the remote/unit, seen within reconcile_seconds):
+manual_run_until_temp_f = 68.0   # manual ON runs until the sensor reads this, ignoring CO2, then off
+manual_run_min_minutes = 10      # ... but at least this long (a press when it's already that cool)
+manual_off_hold_minutes = 10     # manual OFF (or the unit stopping itself): automation waits this long
+# MANUAL mode (Stream Deck long press, /control?mode=manual): automation never switches the AC.
 conditions = [
   { metric = "co2",    on_above = 1500, off_below = 1000 },
   # { metric = "temp_f", on_above = 78,   off_below = 75 },   # optional: also cool when hot

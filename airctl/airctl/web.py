@@ -3,8 +3,12 @@
   GET /status                      current snapshot (status.json)
   GET /history?hours=24            {"status", "events", "readings"} for the last N hours
   GET /feedback?value=too_warm     log a comfort note (too_warm, too_cold, stuffy, too_loud, ok)
-  GET /control?feature=cooling&set=on|off|toggle   manual switch; automation resumes after manual_hold_minutes
+  GET /control?feature=cooling&set=on|off|toggle   manual switch (AUTO: on = run until manual_run_until_temp_f,
+                                                    off = hold manual_off_hold_minutes; MANUAL: just switches)
+  GET /control?feature=cooling&mode=auto|manual|toggle   AUTO/MANUAL mode (never switches the device itself)
   GET /control?feature=cooling&set=temp_up|temp_down   nudge the AC setpoint ~1F (until restart)
+  GET /heater/press/<button>?n=1   relay a press to the heater-ir board (power, up, down, timer)
+  GET /heater/status               the board's own status
   GET /healthz
 """
 
@@ -38,8 +42,8 @@ def read_jsonl_since(directory, kind, since):
 
 
 class Web:
-    def __init__(self, datalog, state_fn, host="0.0.0.0", port=8788, control_fn=None):
-        self.datalog, self.state_fn, self.control_fn = datalog, state_fn, control_fn
+    def __init__(self, datalog, state_fn, host="0.0.0.0", port=8788, control_fn=None, heater=None):
+        self.datalog, self.state_fn, self.control_fn, self.heater = datalog, state_fn, control_fn, heater
         self.host, self.port = host, port
 
     async def start(self):
@@ -67,7 +71,11 @@ class Web:
     async def _route(self, path, q):
         if path == "/control" and self.control_fn:
             action = q.get("set", "")
-            if action not in ("on", "off", "toggle", "temp_up", "temp_down"):
+            if "mode" in q:
+                if q["mode"] not in ("auto", "manual", "toggle"):
+                    return 400, {"ok": False, "error": "mode must be auto, manual or toggle"}
+                action = "mode:" + q["mode"]
+            elif action not in ("on", "off", "toggle", "temp_up", "temp_down"):
                 return 400, {"ok": False, "error": "set must be on, off, toggle, temp_up or temp_down"}
             try:
                 out = await self.control_fn(q.get("feature", "cooling"), action, q.get("source", "manual")[:40])
@@ -76,6 +84,16 @@ class Web:
             except Exception as e:
                 return 502, {"ok": False, "error": f"device: {e}"}
             return 200, {"ok": True, **out}
+        if path.startswith("/heater/") and self.heater:
+            if path == "/heater/status":
+                return await self.heater.status()
+            if path.startswith("/heater/press/"):
+                try:
+                    n = int(q.get("n", 1))
+                except ValueError:
+                    return 400, {"ok": False, "error": "n must be a number"}
+                return await self.heater.press(path[len("/heater/press/"):], n)
+            return 404, {"ok": False, "error": "not found"}
         if path == "/healthz":
             return 200, {"ok": True}
         if path == "/status":
